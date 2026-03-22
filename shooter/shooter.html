@@ -52,7 +52,7 @@
   ]
   var shader = await Coordinates.BasicShader(renderer, shaderOptions)
 
-  var iPc = 1e3
+  var iPc = 3e3
   var geometryData = Array(iPc).fill().map((v, i) => {
     return [1e5, 1e5, 1e5]
   })
@@ -126,6 +126,12 @@
     shotgun.src = URL.createObjectURL(data)
   })
 
+  var shotgunSound = new Audio()
+  var url = 'https://srmcgann.github.io/objs2/shooter/shotgun.ogg'
+  fetch(url).then(res=>res.blob()).then(data => {
+    shotgunSound.src = URL.createObjectURL(data)
+  })
+
   var HUD = new Image()
   var url = 'https://srmcgann.github.io/objs2/shooter/HUD.png'
   fetch(url).then(res=>res.blob()).then(data => {
@@ -140,7 +146,7 @@
     geometryData,
     alpha: .9,
     penumbra: .25,
-    size: 1,
+    size: 2,
     color: 0xff0000,
   }
   await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -211,14 +217,14 @@
     colorMix: 0,
     objY: -100,
   }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await shader.ConnectGeometry(geometry)
   })
   
   const Floor = (x, z) => {
     var mind = 6e6, ret = -1
-    for(var i = 0; i < floorShape.vertices.length; i+=9){
+    for(var i = 0; i < floorShape.vertices.length; i+=9*6){
       var x1 = floorShape.vertices[i+0]
       var y1 = floorShape.vertices[i+1]
       var z1 = floorShape.vertices[i+2]
@@ -242,8 +248,8 @@
   var players = []
   var keyTimerInterval = .2
   var camSel = 0
-  var jumpHeight = 16
-  var grav = 1
+  var jumpHeight = 10
+  var grav = .5
   var playerMdrag = 1.1
   var playerSpeed = .5
   var playerHeight = 24
@@ -261,6 +267,7 @@
       yaw: 0,
       ammo: 25,
       health: 100,
+      shotTimer: 0,
       keys: Array(256).fill(false),
       keyTimers: Array(256).fill(0),
       id: players.length,
@@ -353,37 +360,52 @@
     mSpeed: 2,
   })
   
-  var shotSize = 50
-  var shotspeed  = 1
+  var shotSize = 6
+  var shotspeed  = 10
+  var shotTimerInterval  = .5
   var buckshot = []
   const SpawnShot = player => {
     x = -player.x
-    y = -player.y
+    y = -player.y - 2
     z = -player.z
     var p1 = -player.yaw
-    var p2 = player.pitch + Math.PI/2
-    var vx = S(p1) * S(p2) * shotspeed
-    var vy = C(p2) * shotspeed
-    var vz = C(p1) * S(p2) * shotspeed
+    var p2 = -player.pitch
+    if(!shotgunSound.paused) shotgunSound.pause()
+    shotgunSound.currentTime = 0
+    shotgunSound.play()
     for(var i = 0; i < shotSize; i++){
+      var vx = 0
+      var vy = 0
+      var vz = shotspeed
+      p = Math.atan2(vy, vz) + p2
+      d = Math.hypot(vy, vz)
+      vy = S(p) * d
+      vz = C(p) * d
+      p = Math.atan2(vx, vz) + p1
+      d = Math.hypot(vx, vz)
+      vx = S(p) * d
+      vz = C(p) * d
       buckshot.push({
         x, y, z,
-        vx, vy, vz,
+        vx: vx + ((Rn()-.5)*1),
+        vy: vy + ((Rn()-.5)*1),
+        vz: vz + ((Rn()-.5)*1),
         life: 1
       })
     }
   }
   
-  var iSparkv = .1
-  var iSparkc = 3
+  var iSparkv = .3
+  var iSparkc = 5
   var sparks = []
   const SpawnSparks = (x, y, z) => {
-    var p1 = Rn() * Math.PI * 2
-    var p2 = Rn() < .5 ? Math.PI/2 * Rn() ** .5 : Math.PI - Math.PI/2 *Rn()** .5
-    var vx = S(p1) * S(p2) * iSparkv
-    var vy = C(p2) * iSparkv
-    var vz = C(p1) * S(p2) * iSparkv
+    console.log('spawing sparks')
     for(var i = 0; i < iSparkc; i++){
+      var p1 = Rn() * Math.PI * 2
+      var p2 = Math.PI/2 *Rn()** .5
+      var vx = S(p1) * S(p2) * iSparkv
+      var vy = C(p2) * iSparkv * 2
+      var vz = C(p1) * S(p2) * iSparkv
       sparks.push({
         x, y, z,
         vx, vy, vz,
@@ -393,6 +415,7 @@
   }
   
   renderer.z = renderer.width > 1e3 ? 10 : 20
+  var fl 
   
   window.Draw = () => {
     var t = renderer.frameCount / 60
@@ -402,17 +425,35 @@
     
     var player = players[camSel]
     
+    if(renderer.mouseButton == -1){
+        player.shotTimer = 0
+    }
+    
     // jump
     if(renderer.mouseButton == 2 && player.hasTraction) {
       player.vy -= jumpHeight
     }
   
-    if(renderer.mouseButton == 1 && player.hasTraction) {
-      SpawnShot(player)
+    if(renderer.mouseButton == 1) {
+      if(player.shotTimer <= t){
+        player.shotTimer = t + shotTimerInterval
+        SpawnShot(player)
+      }
     }
-    console.log(buckshot)
   
-    var fl = -Floor(-renderer.x, -renderer.z)
+    var tx = player.vx
+    var tz = player.vz
+    d = Math.hypot(tx, tz) + .0001
+    tx = tx/d*10
+    tz = tz/d*10
+    var tfl = -Floor(-player.x-tx, -player.z-tz)
+    
+    if(player.hasTraction && (player.y - (tfl-playerHeight)) > 10){
+      player.vx *= -.2
+      player.vz *= -.2
+    }else{
+      fl = tfl
+    }
     player.y += player.vy += grav
     player.y = Math.min(fl - playerHeight, player.y)
     if(player.hasTraction = player.y > fl-playerHeight-1){
@@ -435,6 +476,7 @@
       player.z = -G
       player.vz *= -.2
     }
+    
     renderer.x = player.x += player.vx /= player.hasTraction ? playerMdrag : 1
     renderer.z = player.z += player.vz /= player.hasTraction ? playerMdrag : 1
     renderer.y += (player.y - renderer.y) / 2
@@ -455,30 +497,40 @@
           for(var i = 0; i < shape.vertices.length; i += 3){
             var idx = i/3
             if(buckshot.length && idx < buckshot.length && idx < 1e3){
-              x = buckshot[idx].x += buckshot[idx].vx
-              y = buckshot[idx].y += buckshot[idx].vy
-              z = buckshot[idx].z += buckshot[idx].vz
-              buckshot[idx].life -= .01
-              shape.vertices[i+0] = x
-              shape.vertices[i+1] = y
-              shape.vertices[i+2] = z
-              ar[idx*4+0] = 1
-              ar[idx*4+1] = 0
-              ar[idx*4+2] = 0
-              ar[idx*4+3] = 1
+              var bfl
+              if(buckshot[idx].x > G || 
+                 buckshot[idx].x < -G || 
+                 buckshot[idx].z > G || 
+                 buckshot[idx].z < -G || 
+                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*2),(buckshot[idx].z + buckshot[idx].vz*2))) < 3){
+                buckshot[idx].life = 0
+                SpawnSparks(buckshot[idx].x, buckshot[idx].y, buckshot[idx].z)
+              }else{
+                x = buckshot[idx].x += buckshot[idx].vx
+                y = buckshot[idx].y += buckshot[idx].vy
+                z = buckshot[idx].z += buckshot[idx].vz
+                buckshot[idx].life -= .01
+                shape.vertices[i+0] = x
+                shape.vertices[i+1] = y
+                shape.vertices[i+2] = z
+                ar[idx*4+0] = 1
+                ar[idx*4+1] = 0
+                ar[idx*4+2] = 0
+                ar[idx*4+3] = 1
+              }
             }else if(idx>=1e3 &&
                     sparks.length && idx - 1e3 < sparks.length && idx < 2e3){
               x = sparks[idx-1e3].x += sparks[idx-1e3].vx
-              y = sparks[idx-1e3].y += sparks[idx-1e3].vy
+              y = sparks[idx-1e3].y += sparks[idx-1e3].vy -= grav / 16
               z = sparks[idx-1e3].z += sparks[idx-1e3].vz
-              sparks[idx-1e3].life -= .05
               shape.vertices[i+0] = x
               shape.vertices[i+1] = y
               shape.vertices[i+2] = z
-              ar[idx*4+0] = 0
-              ar[idx*4+1] = 1
-              ar[idx*4+2] = 1
-              ar[idx*4+3] = 1
+              ar[idx*4+0] = 1 * 2
+              ar[idx*4+1] = .75 * 2
+              ar[idx*4+2] = 0
+              ar[idx*4+3] = sparks[idx-1e3].life ** .5
+              sparks[idx-1e3].life -= .05
             }else{
               shape.vertices[i+0] = 1e5
               shape.vertices[i+1] = 1e5
