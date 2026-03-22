@@ -3,11 +3,42 @@
   <head>
     <title>Coordinates boilerplate example</title>
     <style>
-      body, html{
-        background: #000;
+      @font-face {
+        font-family: 'Technology';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url(https://srmcgann.github.io/objs/car/Technology-Bold.woff2) format('woff2');
+      }
+      html, body{
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-image: background-size: 100% 100%;
+        background-color: #000;
         margin: 0;
         min-height: 100vh;
         overflow: hidden;
+      }
+      .loadingText{
+        position: absolute;
+        color: #888;
+        font-family: Technology;
+        font-size: 200px;
+        width: 600px;
+        display: block;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .overlay{
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #111e;
+        z-index: 100;
+        display: none;
       }
     </style>
   </head>
@@ -126,6 +157,18 @@
     shotgun.src = URL.createObjectURL(data)
   })
 
+  var shotshell = new Image()
+  var url = 'https://srmcgann.github.io/objs2/shooter/shotShell.png'
+  fetch(url).then(res=>res.blob()).then(data => {
+    shotshell.src = URL.createObjectURL(data)
+  })
+
+  var health = new Image()
+  var url = 'https://srmcgann.github.io/objs2/shooter/health.png'
+  fetch(url).then(res=>res.blob()).then(data => {
+    health.src = URL.createObjectURL(data)
+  })
+
   var shotgunSound = new Audio()
   var url = 'https://srmcgann.github.io/objs2/shooter/shotgun.ogg'
   fetch(url).then(res=>res.blob()).then(data => {
@@ -191,8 +234,8 @@
   var floorShape
   var geoOptions = {
     shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/testEnvironment/texture.png',
-    url: 'https://srmcgann.github.io/objs2/testEnvironment/floor.obj',
+    map: 'https://srmcgann.github.io/objs2/testEnvironment2/texture.png',
+    url: 'https://srmcgann.github.io/objs2/testEnvironment2/floor.obj',
     name: 'main',
     scaleX: 50,
     scaleY: 50,
@@ -224,7 +267,7 @@
   
   const Floor = (x, z) => {
     var mind = 6e6, ret = -1
-    for(var i = 0; i < floorShape.vertices.length; i+=9*6){
+    for(var i = 0; i < floorShape.vertices.length; i+=9*3){
       var x1 = floorShape.vertices[i+0]
       var y1 = floorShape.vertices[i+1]
       var z1 = floorShape.vertices[i+2]
@@ -435,8 +478,9 @@
     }
   
     if(renderer.mouseButton == 1) {
-      if(player.shotTimer <= t){
+      if(player.shotTimer <= t && player.ammo > 0){
         player.shotTimer = t + shotTimerInterval
+        player.ammo--
         SpawnShot(player)
       }
     }
@@ -569,11 +613,44 @@
         y: 0
       }
     }
+    
+    
     ctx.drawImage(shotgun, c.width/2-shotgun.width/2 + gunSway.x,
                            h-shotgun.height/1.75 + gunSway.y,
                            shotgun.width, shotgun.height/2.5)
     ctx.drawImage(HUD,0,0,w,h)
     
+    
+    ctx.font = '40px Technology'
+    for(var i = 0; i < Math.min(12, player.ammo); i++){
+      x = w/2 + 155 + i * shotshell.width * 1.1
+      y = h-52
+      ctx.drawImage(shotshell, x, y, shotshell.width, shotshell.height)
+    }
+    ctx.fillStyle = '#f808'
+    ctx.strokeStyle = '#0008'
+    ctx.lineWidth = 4
+    ctx.textAlign = 'center'
+    ctx.strokeText(player.ammo, w/2 + 110, h-16)
+    ctx.fillText(player.ammo, w/2 + 110, h-16)
+    if(player.ammo > 12){
+      ctx.fillStyle = '#f00'
+      ctx.strokeStyle = '#000'
+      ctx.strokeText('. . .', w/2 + 120 + 14 * shotshell.width, h-20)
+      ctx.fillText('. . .', w/2 + 120 + 14 * shotshell.width, h-20)
+    }
+    
+    for(var i = 0; i < Math.min(19, (.9+player.health/5.5)|0); i++){
+      x = w/2 + 155 + i * health.width * 1.1
+      y = h-98
+      ctx.drawImage(health, x, y, health.width, health.height)
+    }
+    ctx.fillStyle = '#0f28'
+    ctx.strokeStyle = '#0008'
+    ctx.lineWidth = 4
+    ctx.textAlign = 'center'
+    ctx.strokeText(player.health, w/2 + 110, h-65)
+    ctx.fillText(player.health, w/2 + 110, h-65)
   }
   renderer.c.focus()
   
