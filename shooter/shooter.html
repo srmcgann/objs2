@@ -1,3 +1,12 @@
+<!--
+  to-do
+  ✔ base level optimization
+  * powerups
+    * shells, health, weapons/upgrades
+  * large levels, many levels
+  * wall-sliding, proper CD
+  * online
+-->
 <!DOCTYPE html>
 <html>
   <head>
@@ -66,6 +75,9 @@
   var Rn = Math.random
   
   var x, y, z, p, q, d
+  
+  var ax, ay, az
+  var levelSize = 300
   
   Coordinates.AnimationLoop(renderer, 'Draw')
 
@@ -218,9 +230,9 @@
     cullFace: '',
     disableDepthTest: true,
     alpha: .9,
-    scaleX: 50,
-    scaleY: 50,
-    scaleZ: 50,
+    scaleX: levelSize,
+    scaleY: levelSize,
+    scaleZ: levelSize,
     color: 0x00ffff,
     colorMix: .2,
     objY: -100,
@@ -232,18 +244,75 @@
   
   
   var floorShape
+  var floorLookup
+  var resolution = 60
   var geoOptions = {
     shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/testEnvironment2/texture.png',
-    url: 'https://srmcgann.github.io/objs2/testEnvironment2/floor.obj',
+    map: 'https://srmcgann.github.io/objs2/island/texture.png',
+    url: 'https://srmcgann.github.io/objs2/island/land.obj',
     name: 'main',
-    scaleX: 50,
-    scaleY: 50,
-    scaleZ: 50,
+    scaleX: levelSize,
+    scaleY: levelSize,
+    scaleZ: levelSize,
     colorMix: 0,
     objY: -100,
   }
   await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+    var minx = 6e6
+    var maxx = -6e6
+    var miny = 6e6
+    var maxy = -6e6
+    var minz = 6e6
+    var maxz = -6e6
+    for(var i = 0; i < geometry.vertices.length; i += 9){
+      var x1 = geometry.vertices[i+0]
+      var z1 = geometry.vertices[i+2]
+      var x2 = geometry.vertices[i+3]
+      var z2 = geometry.vertices[i+5]
+      var x3 = geometry.vertices[i+6]
+      var z3 = geometry.vertices[i+8]
+      ax = (x1+x2+x3) / 3
+      az = (z1+z2+z3) / 3
+      if(ax < minx) minx = ax
+      if(ax > maxx) maxx = ax
+      if(az < minz) minz = az
+      if(az > maxz) maxz = az
+    }
+    floorLookup = Array(resolution**2).fill().map((v, i) => ({
+      cx: 0, cz: 0, polyCenters: [],
+    }))
+    var width = (maxx-minx) * 1.001
+    var depth = (maxz-minz) * 1.001
+    for(var i = 0; i < geometry.vertices.length; i += 9){
+      var x1 = geometry.vertices[i+0]
+      var y1 = geometry.vertices[i+1]
+      var z1 = geometry.vertices[i+2]
+      var x2 = geometry.vertices[i+3]
+      var y2 = geometry.vertices[i+4]
+      var z2 = geometry.vertices[i+5]
+      var x3 = geometry.vertices[i+6]
+      var y3 = geometry.vertices[i+7]
+      var z3 = geometry.vertices[i+8]
+      ax = (x1+x2+x3) / 3
+      ay = (y1+y2+y3) / 3
+      az = (z1+z2+z3) / 3
+      var idx1 = (ax-minx)/width*resolution | 0
+      var idx2 = (az-minz)/depth*resolution | 0
+      var idx = idx1 + idx2*resolution
+      floorLookup[idx].polyCenters.push({ x: ax, y: ay, z: az })
+    }
+    floorLookup.map((v, i) => {
+      var ax = 0
+      //var ay = 0
+      var az = 0
+      v.polyCenters.map((q, j) => {
+        ax += q.x
+        //ay += q.y
+        az += q.z
+      })
+      v.cx = ax /= v.polyCenters.length
+      v.cz = az /= v.polyCenters.length
+    })
     floorShape = geometry
     shapes.push(geometry)
     await shader.ConnectGeometry(geometry)
@@ -251,52 +320,50 @@
 
   var geoOptions = {
     shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/testEnvironment/texture.png',
-    url: 'https://srmcgann.github.io/objs2/testEnvironment/trees.obj',
+    map: 'https://srmcgann.github.io/objs2/island/texture.png',
+    url: 'https://srmcgann.github.io/objs2/island/ocean and trees.obj',
     name: 'main',
-    scaleX: 50,
-    scaleY: 50,
-    scaleZ: 50,
+    scaleX: levelSize,
+    scaleY: levelSize,
+    scaleZ: levelSize,
     colorMix: 0,
     objY: -100,
   }
-  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(1)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await shader.ConnectGeometry(geometry)
   })
   
+  var markers = []
   const Floor = (x, z) => {
-    var mind = 6e6, ret = -1
-    for(var i = 0; i < floorShape.vertices.length; i+=9*3){
-      var x1 = floorShape.vertices[i+0]
-      var y1 = floorShape.vertices[i+1]
-      var z1 = floorShape.vertices[i+2]
-      var x2 = floorShape.vertices[i+3]
-      var y2 = floorShape.vertices[i+4]
-      var z2 = floorShape.vertices[i+5]
-      var x3 = floorShape.vertices[i+6]
-      var y3 = floorShape.vertices[i+7]
-      var z3 = floorShape.vertices[i+8]
-      var ax = (x1 + x2 + x3) / 3
-      var ay = (y1 + y2 + y3) / 3
-      var az = (z1 + z2 + z3) / 3
-      if((d=Math.hypot(x-ax, z-az)) < mind){
+    markers = []
+    var mind = 6e6, idx = -1, ret = 0
+    floorLookup.forEach((v, i) => {
+      if((d=Math.hypot(v.cx-x, v.cz-z))<mind){
         mind = d
-        ret = ay
+        idx = i
       }
-    }
+    })
+    mind = 6e6
+    floorLookup[idx].polyCenters.forEach((v, i) => {
+      markers.push([v.x, v.y, v.z])
+      if((d=Math.hypot(v.x-x, v.z-z)) < mind){
+        mind = d
+        ret = v.y
+      }
+    })
     return ret
   }
   
   var players = []
   var keyTimerInterval = .2
   var camSel = 0
-  var jumpHeight = 10
-  var grav = .5
+  var jumpHeight = 12
+  var grav = .75
   var playerMdrag = 1.1
   var playerSpeed = .5
   var playerHeight = 24
-  var G = 220
+  var G = 220 / 50 * levelSize
   const SpawnPlayer = () => {
     players.push({
       x: 0,
@@ -488,11 +555,11 @@
     var tx = player.vx
     var tz = player.vz
     d = Math.hypot(tx, tz) + .0001
-    tx = tx/d*10
-    tz = tz/d*10
+    tx = tx/d+(tx*2)
+    tz = tz/d+(tz*2)
     var tfl = -Floor(-player.x-tx, -player.z-tz)
     
-    if(player.hasTraction && (player.y - (tfl-playerHeight)) > 10){
+    if(player.hasTraction && (player.y - (tfl-playerHeight)) > 40){
       player.vx *= -.2
       player.vz *= -.2
     }else{
@@ -575,6 +642,18 @@
               ar[idx*4+2] = 0
               ar[idx*4+3] = sparks[idx-1e3].life ** .5
               sparks[idx-1e3].life -= .05
+            }else if(idx>=2e3 &&
+                    markers.length && idx - 2e3 < markers.length && idx < 3e3){
+              x = markers[idx-2e3][0]
+              y = markers[idx-2e3][1]
+              z = markers[idx-2e3][2]
+              shape.vertices[i+0] = x
+              shape.vertices[i+1] = y
+              shape.vertices[i+2] = z
+              ar[idx*4+0] = 0
+              ar[idx*4+1] = 2
+              ar[idx*4+2] = 0
+              ar[idx*4+3] = 1
             }else{
               shape.vertices[i+0] = 1e5
               shape.vertices[i+1] = 1e5
@@ -613,7 +692,6 @@
         y: 0
       }
     }
-    
     
     ctx.drawImage(shotgun, c.width/2-shotgun.width/2 + gunSway.x,
                            h-shotgun.height/1.75 + gunSway.y,
