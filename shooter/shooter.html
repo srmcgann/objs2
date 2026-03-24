@@ -1,9 +1,11 @@
 <!--
   to-do
   ✔ base level optimization
+  ✔ mute/unmute button
+  * large levels, many levels
+    // finished: island, 
   * powerups
     * shells, health, weapons/upgrades
-  * large levels, many levels
   * wall-sliding, proper CD
   * online
 -->
@@ -77,7 +79,12 @@
   var x, y, z, p, q, d
   
   var ax, ay, az
-  var levelSize = 300
+  var levelSize = 300 / 4
+  var ctx = Coordinates.Overlay.ctx
+  var c = Coordinates.Overlay.c
+  var w = c.width
+  var h = c.height
+  var muted = false
   
   Coordinates.AnimationLoop(renderer, 'Draw')
 
@@ -95,7 +102,140 @@
   ]
   var shader = await Coordinates.BasicShader(renderer, shaderOptions)
 
-  var iPc = 3e3
+  var buttons = [
+    {
+      x: c.width - 85,
+      y: 5,
+      name: 'mute button',
+      actCap: '[M] ' + (['\uD83D', '\uDD0A']).join(''),
+      inactCap: '[M] ' + (['\uD83D', '\uDD07']).join(''),
+      activeStrokeStyle: '#0f48',
+      activeFillStyle: '#0628',
+      inactiveStrokeStyle: '#c008',
+      inactiveFillStyle: '#6008',
+      activeTextColor: '#8fc',
+      inactiveTextColor: '#f88',
+      width: 80,
+      height: 32,
+      fontSize: 24,
+      activeState: true,
+      enabled: true,
+      toolTip: 'mute / unmute',
+      hover: false,
+      clickScript: 'ToggleMute()',
+    },
+  ]
+
+
+  const ToggleMute = (forceToggleButton = false) => {
+    muted = !muted
+    if(forceToggleButton){
+      var el = buttons.filter(button => button.name = 'mute button')[0]
+      el.activeState = !el.activeState
+    }
+    if(muted){
+      if(!shotgunSound.paused){
+        shotgunSound.pause()
+      }
+    }
+  }
+  
+  var mouseReady = true
+  window.onmouseup = () => {
+    mouseReady = true
+  }
+  
+  const HandleButtons = () => {
+/*
+    {
+      x: c.width - 200,
+      y: 20,
+      actCap: '🔊'
+      inactCap: '🔇'
+      activeStrokeStyle: '#0f4'
+      activeFillStyle: '#0628'
+      inactiveStrokeStyle: '#c00'
+      inactiveFillStyle: '#6008'
+      activeTextColor: '#8fc',
+      inactiveTextColor: '#f88',
+      width: 100,
+      height: 32,
+      fontSize: 24,
+      activeState: false,
+      enabled: true,
+    }
+*/      
+
+
+    //ctx.fillStyle = '#f00'
+    //var s = 20
+    var mx = renderer.mouseX
+    var my = renderer.mouseY
+    //ctx.fillRect(mx-s/2, my-s/2, s, s)
+    ctx.textAlign = 'center'
+    buttons.map((button, bIdx) => {
+      var x1 = button.x
+      var y1 = button.y
+      var x2 = button.x + button.width
+      var y2 = button.y + button.height
+      if(button.activeState){
+        ctx.strokeStyle = button.activeStrokeStyle
+        ctx.fillStyle = button.activeFillStyle
+        ctx.fillRect(button.x, button.y, button.width, button.height)
+        ctx.strokeRect(button.x, button.y, button.width, button.height)
+        ctx.fillStyle = button.activeTextColor
+        fs = button.fontSize
+        ctx.font = fs + 'px Technology'
+        ctx.fillText(button.actCap,
+                     button.x + button.width/2,
+                     button.y + button.height/2 + fs/3)
+      }else{
+        ctx.strokeStyle = button.inactiveStrokeStyle
+        ctx.fillStyle = button.inactiveFillStyle
+        ctx.fillRect(button.x, button.y, button.width, button.height)
+        ctx.strokeRect(button.x, button.y, button.width, button.height)
+        ctx.fillStyle = button.inactiveTextColor
+        fs = button.fontSize
+        ctx.font = fs + 'px Technology'
+        ctx.fillText(button.inactCap,
+                     button.x + button.width/2,
+                     button.y + button.height/2 + fs/3)
+      }
+      var fs = 16
+      ctx.font = fs + 'px Technology'
+      if(mouseReady){
+        if(((button.hover || renderer.mouseButton == -1)) &&
+          mx >= x1 && mx < x2 && my >= y1 && my < y2){
+          button.hover = true
+          ctx.fillStyle = '#333c'
+          var textWidth = ctx.measureText(button.toolTip).width
+          if(c.width-mx < textWidth + 5){
+            ctx.fillRect(mx - textWidth - 20, my, textWidth + 20, fs*2)
+            ctx.fillStyle = '#fffc'
+            ctx.fillText(button.toolTip,
+                  mx - textWidth/2 - 10, my+fs*1.33)
+          }else{
+            ctx.fillRect(mx - 10, my, textWidth + 20, fs*2)
+            ctx.fillStyle = '#fffc'
+            ctx.fillText(button.toolTip,
+                  mx + textWidth/2, my+fs*1.33)
+          }
+          if(renderer.mouseButton != -1){
+            if(!(mx >= x1 && mx < x2 && my >= y1 && my < y2)){
+              button.hover = false
+            }
+            button.activeState = !button.activeState
+            mouseReady = false
+            eval(button.clickScript)
+          }
+        }else{
+          button.hover = false
+        }
+      }
+    })
+  }
+
+  var iPc = 9e3
   var geometryData = Array(iPc).fill().map((v, i) => {
     return [1e5, 1e5, 1e5]
   })
@@ -184,6 +324,7 @@
   var shotgunSound = new Audio()
   var url = 'https://srmcgann.github.io/objs2/shooter/shotgun.ogg'
   fetch(url).then(res=>res.blob()).then(data => {
+    shotgunSound.volume = .25
     shotgunSound.src = URL.createObjectURL(data)
   })
 
@@ -201,7 +342,7 @@
     geometryData,
     alpha: .9,
     penumbra: .25,
-    size: 2,
+    size: 1.5,
     color: 0xff0000,
   }
   await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -225,7 +366,7 @@
   var geoOptions = {
     shapeType: 'obj',
     //map: 'https://srmcgann.github.io/objs2/testEnvironment/texture.png',
-    url: 'https://srmcgann.github.io/objs2/testEnvironment/enclosure.obj?2',
+    url: 'https://srmcgann.github.io/objs2/testEnvironment/enclosure.obj',
     name: 'enclosure',
     cullFace: '',
     disableDepthTest: true,
@@ -237,7 +378,7 @@
     colorMix: .2,
     objY: -100,
   }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await enclosureShader.ConnectGeometry(geometry)
   })
@@ -245,11 +386,11 @@
   
   var floorShape
   var floorLookup
-  var resolution = 60
+  var resolution = 32
   var geoOptions = {
     shapeType: 'obj',
     map: 'https://srmcgann.github.io/objs2/island/texture.png',
-    url: 'https://srmcgann.github.io/objs2/island/land.obj',
+    url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
     name: 'main',
     scaleX: levelSize,
     scaleY: levelSize,
@@ -281,8 +422,8 @@
     floorLookup = Array(resolution**2).fill().map((v, i) => ({
       cx: 0, cz: 0, polyCenters: [],
     }))
-    var width = (maxx-minx) * 1.001
-    var depth = (maxz-minz) * 1.001
+    var width = (maxx-minx) * 1.00001
+    var depth = (maxz-minz) * 1.00001
     for(var i = 0; i < geometry.vertices.length; i += 9){
       var x1 = geometry.vertices[i+0]
       var y1 = geometry.vertices[i+1]
@@ -358,11 +499,11 @@
   var players = []
   var keyTimerInterval = .2
   var camSel = 0
-  var jumpHeight = 12
+  var jumpHeight = 10
   var grav = .75
   var playerMdrag = 1.1
-  var playerSpeed = .5
-  var playerHeight = 24
+  var playerSpeed = .1
+  var playerHeight = 28 / 2
   var G = 220 / 50 * levelSize
   const SpawnPlayer = () => {
     players.push({
@@ -387,8 +528,10 @@
   }
   
   window.onclick = () => {
-    if(!document.pointerLockElement){
-      renderer.c.requestPointerLock()
+    if(!buttons.filter(button=>button.name=='mute button')[0].hover){
+      if(!document.pointerLockElement){
+        renderer.c.requestPointerLock()
+      }
     }
   }
   
@@ -402,6 +545,9 @@
   
   window.onkeydown = e => {
     console.log(e.keyCode)
+    if(e.keyCode == 77){
+      ToggleMute(true)
+    }
     players[0].keys[e.keyCode] = true
   }
   
@@ -429,29 +575,33 @@
           case 87: //W
             if(player.hasTraction){
               var p = -renderer.yaw + Math.PI
-              player.vx += S(p) * playerSpeed
-              player.vz += C(p) * playerSpeed
+              var accel = player.keys[16] ? 3 : 1
+              player.vx += S(p) * playerSpeed * accel
+              player.vz += C(p) * playerSpeed * accel
             }
           break
           case 65: //A
             if(player.hasTraction){
               var p = -renderer.yaw + Math.PI/2
-              player.vx += S(p) * playerSpeed
-              player.vz += C(p) * playerSpeed
+              var accel = player.keys[16] ? 3 : 1
+              player.vx += S(p) * playerSpeed * accel
+              player.vz += C(p) * playerSpeed * accel
             }
           break
           case 83: //S
             if(player.hasTraction){
               var p = -renderer.yaw
-              player.vx += S(p) * playerSpeed
-              player.vz += C(p) * playerSpeed
+              var accel = player.keys[16] ? 3 : 1
+              player.vx += S(p) * playerSpeed * accel
+              player.vz += C(p) * playerSpeed * accel
             }
           break
           case 68: //D
             if(player.hasTraction){
               var p = -renderer.yaw - Math.PI / 2
-              player.vx += S(p) * playerSpeed
-              player.vz += C(p) * playerSpeed
+              var accel = player.keys[16] ? 3 : 1
+              player.vx += S(p) * playerSpeed * accel
+              player.vz += C(p) * playerSpeed * accel
             }
           break
         }
@@ -470,7 +620,7 @@
     mSpeed: 2,
   })
   
-  var shotSize = 6
+  var shotSize = 10
   var shotspeed  = 10
   var shotTimerInterval  = .5
   var buckshot = []
@@ -481,8 +631,10 @@
     var p1 = -player.yaw
     var p2 = -player.pitch
     if(!shotgunSound.paused) shotgunSound.pause()
-    shotgunSound.currentTime = 0
-    shotgunSound.play()
+    if(!muted){
+      shotgunSound.currentTime = 0
+      shotgunSound.play()
+    }
     for(var i = 0; i < shotSize; i++){
       var vx = 0
       var vy = 0
@@ -505,11 +657,10 @@
     }
   }
   
-  var iSparkv = .3
+  var iSparkv = .5
   var iSparkc = 5
   var sparks = []
   const SpawnSparks = (x, y, z) => {
-    console.log('spawing sparks')
     for(var i = 0; i < iSparkc; i++){
       var p1 = Rn() * Math.PI * 2
       var p2 = Math.PI/2 *Rn()** .5
@@ -544,7 +695,8 @@
       player.vy -= jumpHeight
     }
   
-    if(renderer.mouseButton == 1) {
+    if(renderer.mouseButton == 1 &&
+       !buttons.filter(button=>button.name=='mute button')[0].hover) {
       if(player.shotTimer <= t && player.ammo > 0){
         player.shotTimer = t + shotTimerInterval
         player.ammo--
@@ -559,7 +711,7 @@
     tz = tz/d+(tz*2)
     var tfl = -Floor(-player.x-tx, -player.z-tz)
     
-    if(player.hasTraction && (player.y - (tfl-playerHeight)) > 40){
+    if(player.hasTraction && (player.y - (tfl-playerHeight)) > 20){
       player.vx *= -.2
       player.vz *= -.2
     }else{
@@ -591,10 +743,10 @@
     renderer.x = player.x += player.vx /= player.hasTraction ? playerMdrag : 1
     renderer.z = player.z += player.vz /= player.hasTraction ? playerMdrag : 1
     renderer.y += (player.y - renderer.y) / 2
-    renderer.yaw += (player.yaw - renderer.yaw) / 2
+    renderer.yaw += (player.yaw - renderer.yaw) / 1.5
     
     player.pitch = Math.min(Math.PI/2, Math.max(-Math.PI/2, player.pitch))
-    renderer.pitch += (player.pitch - renderer.pitch) / 2
+    renderer.pitch += (player.pitch - renderer.pitch) / 1.5
   
     shapes.forEach(shape => {
       switch(shape.name){
@@ -607,13 +759,13 @@
           buckshot = buckshot.filter((v, i) => v.life > 0)
           for(var i = 0; i < shape.vertices.length; i += 3){
             var idx = i/3
-            if(buckshot.length && idx < buckshot.length && idx < 1e3){
+            if(buckshot.length && idx < buckshot.length && idx < 3e3){
               var bfl
               if(buckshot[idx].x > G || 
                  buckshot[idx].x < -G || 
                  buckshot[idx].z > G || 
                  buckshot[idx].z < -G || 
-                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*2),(buckshot[idx].z + buckshot[idx].vz*2))) < 3){
+                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*2),(buckshot[idx].z + buckshot[idx].vz*2))) < 1){
                 buckshot[idx].life = 0
                 SpawnSparks(buckshot[idx].x, buckshot[idx].y, buckshot[idx].z)
               }else{
@@ -629,24 +781,24 @@
                 ar[idx*4+2] = 0
                 ar[idx*4+3] = 1
               }
-            }else if(idx>=1e3 &&
-                    sparks.length && idx - 1e3 < sparks.length && idx < 2e3){
-              x = sparks[idx-1e3].x += sparks[idx-1e3].vx
-              y = sparks[idx-1e3].y += sparks[idx-1e3].vy -= grav / 16
-              z = sparks[idx-1e3].z += sparks[idx-1e3].vz
+            }else if(idx>=3e3 &&
+                    sparks.length && idx - 3e3 < sparks.length && idx < 6e3){
+              x = sparks[idx-3e3].x += sparks[idx-3e3].vx
+              y = sparks[idx-3e3].y += sparks[idx-3e3].vy -= grav / 16
+              z = sparks[idx-3e3].z += sparks[idx-3e3].vz
               shape.vertices[i+0] = x
               shape.vertices[i+1] = y
               shape.vertices[i+2] = z
               ar[idx*4+0] = 1 * 2
               ar[idx*4+1] = .75 * 2
               ar[idx*4+2] = 0
-              ar[idx*4+3] = sparks[idx-1e3].life ** .5
-              sparks[idx-1e3].life -= .05
-            }else if(idx>=2e3 &&
-                    markers.length && idx - 2e3 < markers.length && idx < 3e3){
-              x = markers[idx-2e3][0]
-              y = markers[idx-2e3][1]
-              z = markers[idx-2e3][2]
+              ar[idx*4+3] = sparks[idx-3e3].life ** .5
+              sparks[idx-3e3].life -= .05
+            }else if(idx>=6e3 &&
+                    markers.length && idx - 6e3 < markers.length && idx < 9e3){
+              x = markers[idx-6e3][0]
+              y = markers[idx-6e3][1]
+              z = markers[idx-6e3][2]
               shape.vertices[i+0] = x
               shape.vertices[i+1] = y
               shape.vertices[i+2] = z
@@ -674,10 +826,6 @@
       }
     })
     
-    var ctx = Coordinates.Overlay.ctx
-    var c = Coordinates.Overlay.c
-    var w = c.width
-    var h = c.height
     ctx.clearRect(0,0,w,h)
     var gunSway
     var d = Math.hypot(player.vx, player.vy, player.vz)
@@ -729,6 +877,8 @@
     ctx.textAlign = 'center'
     ctx.strokeText(player.health, w/2 + 110, h-65)
     ctx.fillText(player.health, w/2 + 110, h-65)
+    
+    HandleButtons()
   }
   renderer.c.focus()
   
