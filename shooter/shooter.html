@@ -70,7 +70,9 @@
   var renderer = await Coordinates.Renderer(rendererOptions)
   
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
-  var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
+  //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
+  //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/redwalk.jpg'
+  var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/skymaze.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/doommaze.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/28.jpg'
@@ -83,7 +85,7 @@
   var x, y, z, p, q, d
   
   var ax, ay, az
-  var levelSize = 200 / 4
+  var levelSize = 400 / 4
   var ctx = Coordinates.Overlay.ctx
   var c = Coordinates.Overlay.c
   var w = c.width
@@ -409,16 +411,18 @@
   
   
   var floorLookup
-  var resolution = 30
+  var resolution = 50
   var geoOptions = {
     shapeType: 'obj',
-    //map: 'https://srmcgann.github.io/objs2/island/texture.png',
-    //url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
-    map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
-    url: 'https://srmcgann.github.io/objs2/cathedral/floor_new.obj?3',
+    map: 'https://srmcgann.github.io/objs2/island/texture.png',
+    url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
+    //map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
+    //url: 'https://srmcgann.github.io/objs2/cathedral/floor_new.obj?3',
+    //map: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.png',
+    //url: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.obj',
     name: 'main',
     scaleX: levelSize,
-    scaleY: levelSize,
+    scaleY: levelSize / 1,
     scaleZ: levelSize,
     colorMix: 0,
     objY: -100,
@@ -506,7 +510,7 @@
     colorMix: 0,
     objY: -100,
   }
-  if(1)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await shader.ConnectGeometry(geometry)
   })
@@ -522,7 +526,7 @@
     colorMix: 0,
     objY: -100,
   }
-  if(1)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await glassShader.ConnectGeometry(geometry)
   })
@@ -538,7 +542,7 @@
     colorMix: 0,
     objY: -100,
   }
-  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(1)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await shader.ConnectGeometry(geometry)
   })
@@ -569,12 +573,12 @@
   var players = []
   var keyTimerInterval = .2
   var camSel = 0
-  var jumpHeight = 10
-  var grav = .75
-  var playerMdrag = 1.1
-  var playerSpeed = .2
-  var playerHeight = 28 / 2
-  var playerRadius = 2
+  var jumpHeight = 14
+  var grav = 1
+  var playerMdrag = 1.4
+  var playerSpeed = 1.1
+  var playerHeight = 28 / 1.5
+  var playerRadius = 12
   var G = 220 / 50 * levelSize
   const SpawnPlayer = () => {
     players.push({
@@ -587,7 +591,7 @@
       roll: 0,
       pitch: 0,
       yaw: 0,
-      ammo: 25,
+      ammo: 100,
       health: 100,
       shotTimer: 0,
       keys: Array(256).fill(false),
@@ -720,9 +724,9 @@
       vz = C(p) * d
       buckshot.push({
         x, y, z,
-        vx: vx + ((Rn()-.5)*1),
-        vy: vy + ((Rn()-.5)*1),
-        vz: vz + ((Rn()-.5)*1),
+        vx: vx + ((Rn()-.5)*2),
+        vy: vy + ((Rn()-.5)*2),
+        vz: vz + ((Rn()-.5)*2),
         life: 1
       })
     }
@@ -777,20 +781,25 @@
   
     var tx = player.vx
     var tz = player.vz
-    var fl = -Floor(-player.x-tx, -player.z-tz).position
+    var fl = -Floor(-player.x, -player.z).position
     
     var p = Math.atan2(player.vx, player.vz)
     var cx = S(p) * playerRadius
     var cz = C(p) * playerRadius
     var testCD = Floor(-player.x-tx-cx, -player.z-tz-cz)
     var tfl = -testCD.position
-    if(tfl-fl < -5){
+    //if(Math.abs(tfl-fl)>1) console.log(tfl-fl, player.y, tfl)
+    if(tfl-fl < -16 && player.y > tfl){
       var a = [player.vx, player.vy, player.vz]
       var n = [testCD.normalVec.x, testCD.normalVec.y, testCD.normalVec.z]
       var r = Coordinates.Reflect(a, n)
-      player.vx = r[0] * .5
-      player.vy = r[1] * .5
-      player.vz = r[2] * .5
+      d = Math.hypot(r[0], r[2])
+      r[0] /= d
+      r[2] /= d
+      tx = player.vx = r[0]
+      //player.vy = r[1]
+      tz = player.vz = r[2]
+      fl = -Floor(-player.x-tx, -player.z-tz).position
     }
     
     
@@ -842,7 +851,7 @@
                  buckshot[idx].x < -G || 
                  buckshot[idx].z > G || 
                  buckshot[idx].z < -G || 
-                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position) < 0){
+                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position) < 5){
                 buckshot[idx].life = 0
                 SpawnSparks(buckshot[idx].x, buckshot[idx].y, buckshot[idx].z)
               }else{
