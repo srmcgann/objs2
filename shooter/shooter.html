@@ -2,8 +2,9 @@
   to-do
   ✔ base level optimization
   ✔ mute/unmute button
+  * add support for multiple floors
   * large levels, many levels
-    // finished: island, 
+    // finished: island, cathedral
   * powerups
     * shells, health, weapons/upgrades
   * wall-sliding, proper CD
@@ -70,7 +71,8 @@
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/doommaze.jpg'
-  var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/28.jpg'
+  //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/28.jpg'
+  var refTexture = 'https://srmcgann.github.io/skyboxes4/HDRI/brutalism2_maze.jpg'
   
   var S = Math.sin
   var C = Math.cos
@@ -79,7 +81,7 @@
   var x, y, z, p, q, d
   
   var ax, ay, az
-  var levelSize = 300 / 4
+  var levelSize = 200 / 4
   var ctx = Coordinates.Overlay.ctx
   var c = Coordinates.Overlay.c
   var w = c.width
@@ -101,6 +103,26 @@
     } },
   ]
   var shader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+  var shaderOptions = [
+    {lighting: {type: 'ambientLight', value: .8}},
+    { uniform: {
+      type: 'phong',
+      value: .05
+    } },
+    { uniform: {
+      type: 'reflection',
+      map: refTexture,
+      value: .15
+    } },
+    { uniform: {
+      type: 'refraction2',
+      angleOfRefraction: 1,
+      map: refTexture,
+      value: .8
+    } },
+  ]
+  var glassShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
   var buttons = [
     {
@@ -386,11 +408,13 @@
   
   var floorShape
   var floorLookup
-  var resolution = 32
+  var resolution = 20
   var geoOptions = {
     shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/island/texture.png',
-    url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
+    //map: 'https://srmcgann.github.io/objs2/island/texture.png',
+    //url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
+    map: 'https://srmcgann.github.io/objs2/cathedral/texture.png',
+    url: 'https://srmcgann.github.io/objs2/cathedral/cathedral.obj?3',
     name: 'main',
     scaleX: levelSize,
     scaleY: levelSize,
@@ -461,6 +485,22 @@
 
   var geoOptions = {
     shapeType: 'obj',
+    map: 'https://srmcgann.github.io/objs2/cathedral/texture.png',
+    url: 'https://srmcgann.github.io/objs2/cathedral/glass.obj?s2',
+    name: 'glass',
+    scaleX: levelSize,
+    scaleY: levelSize,
+    scaleZ: levelSize,
+    colorMix: 0,
+    objY: -100,
+  }
+  if(1)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+    shapes.push(geometry)
+    await glassShader.ConnectGeometry(geometry)
+  })
+  
+  var geoOptions = {
+    shapeType: 'obj',
     map: 'https://srmcgann.github.io/objs2/island/texture.png',
     url: 'https://srmcgann.github.io/objs2/island/ocean and trees.obj',
     name: 'main',
@@ -470,7 +510,7 @@
     colorMix: 0,
     objY: -100,
   }
-  if(1)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await shader.ConnectGeometry(geometry)
   })
@@ -711,10 +751,12 @@
     tz = tz/d+(tz*2)
     var tfl = -Floor(-player.x-tx, -player.z-tz)
     
-    if(player.hasTraction && (player.y - (tfl-playerHeight)) > 20){
+    if(player.hasTraction && ((player.y - (tfl-playerHeight)) > 160)){
+      //&& !((player.y - (tfl-playerHeight)) > 32)){
       player.vx *= -.2
       player.vz *= -.2
     }else{
+      //if(!((player.y - (tfl-playerHeight)) > 32)) fl = tfl
       fl = tfl
     }
     player.y += player.vy += grav
