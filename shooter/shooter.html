@@ -2,12 +2,12 @@
   to-do
   ✔ base level optimization
   ✔ mute/unmute button
+  * wall-sliding, proper CD
   * add support for multiple floors
   * large levels, many levels
     // finished: island, cathedral
   * powerups
     * shells, health, weapons/upgrades
-  * wall-sliding, proper CD
   * online
 -->
 <!DOCTYPE html>
@@ -58,7 +58,8 @@
 <script type="module">
 
   import * as Coordinates from
-  "https://srmcgann.github.io/Coordinates/coordinates.min.js"
+  "https://cantelope42.github.io/tempp/coordinates.js"
+  //"https://srmcgann.github.io/Coordinates/coordinates.min.js"
 
   var rendererOptions = {
     ambientLight: .5, margin: 0,
@@ -69,10 +70,11 @@
   var renderer = await Coordinates.Renderer(rendererOptions)
   
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
+  var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/doommaze.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/28.jpg'
-  var refTexture = 'https://srmcgann.github.io/skyboxes4/HDRI/brutalism2_maze.jpg'
+  //var refTexture = 'https://srmcgann.github.io/skyboxes4/HDRI/brutalism2_maze.jpg'
   
   var S = Math.sin
   var C = Math.cos
@@ -91,15 +93,15 @@
   Coordinates.AnimationLoop(renderer, 'Draw')
 
   var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .6}},
+    {lighting: {type: 'ambientLight', value: .2}},
     { uniform: {
       type: 'phong',
-      value: .4
+      value: .2
     } },
     { uniform: {
       type: 'reflection',
       map: refTexture,
-      value: 0
+      value: .05
     } },
   ]
   var shader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -370,7 +372,7 @@
   await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await particleShader.ConnectGeometry(geometry)
-  })  
+  })
 
   var geoOptions = {
     shapeType: 'dodecahedron',
@@ -384,7 +386,7 @@
   await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await backgroundShader.ConnectGeometry(geometry)
-  })  
+  })
   var geoOptions = {
     shapeType: 'obj',
     //map: 'https://srmcgann.github.io/objs2/testEnvironment/texture.png',
@@ -406,15 +408,14 @@
   })
   
   
-  var floorShape
   var floorLookup
-  var resolution = 20
+  var resolution = 30
   var geoOptions = {
     shapeType: 'obj',
     //map: 'https://srmcgann.github.io/objs2/island/texture.png',
     //url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
-    map: 'https://srmcgann.github.io/objs2/cathedral/texture.png',
-    url: 'https://srmcgann.github.io/objs2/cathedral/cathedral.obj?3',
+    map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
+    url: 'https://srmcgann.github.io/objs2/cathedral/floor_new.obj?3',
     name: 'main',
     scaleX: levelSize,
     scaleY: levelSize,
@@ -444,7 +445,9 @@
       if(az > maxz) maxz = az
     }
     floorLookup = Array(resolution**2).fill().map((v, i) => ({
-      cx: 0, cz: 0, polyCenters: [],
+      cx: 0, cz: 0,
+      normalVecs: [],
+      polyCenters: [],
     }))
     var width = (maxx-minx) * 1.00001
     var depth = (maxz-minz) * 1.00001
@@ -465,6 +468,16 @@
       var idx2 = (az-minz)/depth*resolution | 0
       var idx = idx1 + idx2*resolution
       floorLookup[idx].polyCenters.push({ x: ax, y: ay, z: az })
+      var nx=0, ny=0, nz=0
+      for(var m = 0; m < 3; m++){
+        nx += geometry.normalVecs[i+0+m*3]
+        ny += geometry.normalVecs[i+1+m*3]
+        nz += geometry.normalVecs[i+2+m*3]
+      }
+      nx /= 3
+      ny /= 3
+      nz /= 3
+      floorLookup[idx].normalVecs.push({ x: nx, y: ny, z: nz })
     }
     floorLookup.map((v, i) => {
       var ax = 0
@@ -478,15 +491,30 @@
       v.cx = ax /= v.polyCenters.length
       v.cz = az /= v.polyCenters.length
     })
-    floorShape = geometry
     shapes.push(geometry)
     await shader.ConnectGeometry(geometry)
   })
 
   var geoOptions = {
     shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/cathedral/texture.png',
-    url: 'https://srmcgann.github.io/objs2/cathedral/glass.obj?s2',
+    map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
+    url: 'https://srmcgann.github.io/objs2/cathedral/building_top_new.obj?2',
+    name: 'extras',
+    scaleX: levelSize,
+    scaleY: levelSize,
+    scaleZ: levelSize,
+    colorMix: 0,
+    objY: -100,
+  }
+  if(1)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+    shapes.push(geometry)
+    await shader.ConnectGeometry(geometry)
+  })
+  
+  var geoOptions = {
+    shapeType: 'obj',
+    map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
+    url: 'https://srmcgann.github.io/objs2/cathedral/glass.obj?3',
     name: 'glass',
     scaleX: levelSize,
     scaleY: levelSize,
@@ -518,7 +546,8 @@
   var markers = []
   const Floor = (x, z) => {
     markers = []
-    var mind = 6e6, idx = -1, ret = 0
+    var mind = 6e6, idx = -1, position = -6e6
+    var normalVec = {x: 0, y: 0, z: 0}
     floorLookup.forEach((v, i) => {
       if((d=Math.hypot(v.cx-x, v.cz-z))<mind){
         mind = d
@@ -528,12 +557,13 @@
     mind = 6e6
     floorLookup[idx].polyCenters.forEach((v, i) => {
       markers.push([v.x, v.y, v.z])
-      if((d=Math.hypot(v.x-x, v.z-z)) < mind){
+      if((d=Math.hypot(v.x-x, v.z-z)) < mind && v.y > position){
         mind = d
-        ret = v.y
+        position = v.y
+        normalVec = floorLookup[idx].normalVecs[i]
       }
     })
-    return ret
+    return {position, normalVec}
   }
   
   var players = []
@@ -542,8 +572,9 @@
   var jumpHeight = 10
   var grav = .75
   var playerMdrag = 1.1
-  var playerSpeed = .1
+  var playerSpeed = .2
   var playerHeight = 28 / 2
+  var playerRadius = 2
   var G = 220 / 50 * levelSize
   const SpawnPlayer = () => {
     players.push({
@@ -746,19 +777,23 @@
   
     var tx = player.vx
     var tz = player.vz
-    d = Math.hypot(tx, tz) + .0001
-    tx = tx/d+(tx*2)
-    tz = tz/d+(tz*2)
-    var tfl = -Floor(-player.x-tx, -player.z-tz)
+    var fl = -Floor(-player.x-tx, -player.z-tz).position
     
-    if(player.hasTraction && ((player.y - (tfl-playerHeight)) > 160)){
-      //&& !((player.y - (tfl-playerHeight)) > 32)){
-      player.vx *= -.2
-      player.vz *= -.2
-    }else{
-      //if(!((player.y - (tfl-playerHeight)) > 32)) fl = tfl
-      fl = tfl
+    var p = Math.atan2(player.vx, player.vz)
+    var cx = S(p) * playerRadius
+    var cz = C(p) * playerRadius
+    var testCD = Floor(-player.x-tx-cx, -player.z-tz-cz)
+    var tfl = -testCD.position
+    if(tfl-fl < -5){
+      var a = [player.vx, player.vy, player.vz]
+      var n = [testCD.normalVec.x, testCD.normalVec.y, testCD.normalVec.z]
+      var r = Coordinates.Reflect(a, n)
+      player.vx = r[0] * .5
+      player.vy = r[1] * .5
+      player.vz = r[2] * .5
     }
+    
+    
     player.y += player.vy += grav
     player.y = Math.min(fl - playerHeight, player.y)
     if(player.hasTraction = player.y > fl-playerHeight-1){
@@ -807,7 +842,7 @@
                  buckshot[idx].x < -G || 
                  buckshot[idx].z > G || 
                  buckshot[idx].z < -G || 
-                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*2),(buckshot[idx].z + buckshot[idx].vz*2))) < 1){
+                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position) < 0){
                 buckshot[idx].life = 0
                 SpawnSparks(buckshot[idx].x, buckshot[idx].y, buckshot[idx].z)
               }else{
@@ -857,9 +892,27 @@
           renderer.Draw(shape)
         break
         case 'main':
+          shape.x = 0
+          shape.y = 0
+          shape.z = 0
+          renderer.Draw(shape)
+        break
+        case 'glass':
+          shape.x = 0
+          shape.y = 0
+          shape.z = 0
+          renderer.Draw(shape)
+        break
+        case 'extras':
+          shape.x = 0
+          shape.y = 0
+          shape.z = 0
           renderer.Draw(shape)
         break
         case 'enclosure':
+          shape.x = 0
+          shape.y = 0
+          shape.z = 0
           renderer.Draw(shape)
         break
         default:
@@ -887,7 +940,6 @@
                            h-shotgun.height/1.75 + gunSway.y,
                            shotgun.width, shotgun.height/2.5)
     ctx.drawImage(HUD,0,0,w,h)
-    
     
     ctx.font = '40px Technology'
     for(var i = 0; i < Math.min(12, player.ammo); i++){
