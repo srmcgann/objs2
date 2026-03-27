@@ -2,8 +2,9 @@
   to-do
   ✔ base level optimization
   ✔ mute/unmute button
-  * wall-sliding, proper CD
-  * add support for multiple floors
+  ✔ wall-sliding, proper CD
+  * shotgun recoil
+  * level picker / system
   * large levels, many levels
     // finished: island, cathedral
   * powerups
@@ -58,12 +59,12 @@
 <script type="module">
 
   import * as Coordinates from
-  "https://cantelope42.github.io/tempp/coordinates.js"
-  //"https://srmcgann.github.io/Coordinates/coordinates.min.js"
+  "https://srmcgann.github.io/Coordinates/coordinates.min.js"
+  //"https://cantelope42.github.io/tempp/coordinates.js"
 
   var rendererOptions = {
     ambientLight: .5, margin: 0,
-    fov: 650, width: 1920, height: 1080,
+    fov: 1e3, width: 1920, height: 1080,
     //fov: 1e3/2, width: 1920/2, height: 1080/2,
     // uncomment above for lower-res, higher-performance canvas
   }
@@ -74,14 +75,14 @@
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/redwalk.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/skymaze.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/1.jpg'
+  var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/1.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/alices.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/angels.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/fantasy1.jpg'
   //var refTexture = 'https://i.imgur.com/Ad8pyZy.mp4'
   //var refTexture = 'https://i.imgur.com/ztYVnB6.mp4'
-  var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg'
+  //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/doommaze.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/28.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes4/HDRI/brutalism2_maze.jpg'
@@ -93,7 +94,7 @@
   var x, y, z, p, q, d
   
   var ax, ay, az
-  var levelSize = 400 / 4
+  var levelSize = 150 / 4
   var ctx = Coordinates.Overlay.ctx
   var c = Coordinates.Overlay.c
   var w = c.width
@@ -131,10 +132,10 @@
     } },
     { uniform: {
       type: 'refraction2',
-      angleOfRefraction: .2,
+      angleOfRefraction: .05,
       playbackSpeed,
       map: refTexture,
-      value: 1
+      value: .25
     } },
   ]
   var glassShader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -312,7 +313,7 @@
   var particleShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
   var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .05}},
+    {lighting: {type: 'ambientLight', value: .2}},
     { uniform: {
       type: 'phong',
       value: .05
@@ -321,20 +322,20 @@
       type: 'reflection',
       playbackSpeed,
       map: refTexture,
-      value: .1
+      value: .2
     } },
     { uniform: {
       type: 'refraction2',
       playbackSpeed,
       map: refTexture,
       angleOfRefraction: -.5,
-      value: .3,
+      value: .4,
     } },
   ]
   var enclosureShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
   var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: 1.5}},
+    {lighting: {type: 'ambientLight', value: 1.1}},
     { uniform: {
       type: 'phong',
       value: 0
@@ -363,14 +364,14 @@
   var shotgunSound = new Audio()
   var url = 'https://srmcgann.github.io/objs2/shooter/shotgun.ogg'
   fetch(url).then(res=>res.blob()).then(data => {
-    shotgunSound.volume = .25
+    shotgunSound.volume = .33
     shotgunSound.src = URL.createObjectURL(data)
   })
 
   var shotgunEmpty = new Audio()
   var url = 'https://srmcgann.github.io/objs2/shooter/shotgunEmpty.mp3'
   fetch(url).then(res=>res.blob()).then(data => {
-    shotgunEmpty.volume = .25
+    shotgunEmpty.volume = .75
     shotgunEmpty.src = URL.createObjectURL(data)
   })
 
@@ -419,36 +420,40 @@
     disableDepthTest: true,
     flipNormals: true,
     alpha: .9,
-    scaleX: levelSize,
-    scaleY: levelSize,
-    scaleZ: levelSize,
+    scaleX: levelSize*5.66,
+    scaleY: levelSize*5,
+    scaleZ: levelSize*5.66,
     color: 0x00ffff,
     colorMix: .2,
-    objY: -100,
+    objY: -10,
   }
-  if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+  if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
     await enclosureShader.ConnectGeometry(geometry)
   })
   
   
   var floorLookup
-  var resolution = 50
+  var resolution = 60
   var geoOptions = {
     shapeType: 'obj',
     //map: 'https://srmcgann.github.io/objs2/island/texture.png',
     //url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
-    map: 'https://srmcgann.github.io/objs2/eggcrate 2/texture.png',
-    url: 'https://srmcgann.github.io/objs2/eggcrate 2/eggcrate 2.obj',
+    //map: 'https://srmcgann.github.io/objs2/eggcrate 2/texture.png',
+    //url: 'https://srmcgann.github.io/objs2/eggcrate 2/eggcrate 2.obj',
     //map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
     //url: 'https://srmcgann.github.io/objs2/cathedral/floor_new.obj?3',
     //map: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.png',
     //url: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.obj',
+    url: 'https://srmcgann.github.io/objs2/maze arena 1/maze arena 1.obj?2',
+    map: 'https://srmcgann.github.io/objs2/maze arena 1/texture.png?2',
     name: 'main',
+    cullFace: '',
     flipNormals: false,
     scaleX: levelSize,
-    scaleY: levelSize / -2,
+    scaleY: levelSize / 2,
     scaleZ: levelSize,
+    color: 0x118822,
     colorMix: 0,
     objY: -100,
   }
@@ -588,7 +593,7 @@
     mind = 6e6
     floorLookup[idx].polyCenters.forEach((v, i) => {
       markers.push([v.x, v.y, v.z])
-      if((d=Math.hypot(v.x-x, v.z-z)) < mind && v.y > position){
+      if((d=Math.hypot(v.x-x, v.z-z)) < mind){
         mind = d
         position = v.y
         normalVec = floorLookup[idx].normalVecs[i]
@@ -600,25 +605,28 @@
   var players = []
   var keyTimerInterval = .2
   var camSel = 0
-  var jumpHeight = 16
-  var grav = .75
+  var jumpHeight = 25
+  var grav = 2
   var playerMdrag = 1.4
-  var playerSpeed = 1.1
-  var playerHeight = 28 / 1.5
-  var playerRadius = 6
-  var G = 220 / 50 * levelSize
+  var playerSpeed = 2
+  var playerHeight = 32 / 1.5
+  var playerRadius = 32
+  var G = 1240 / 50 * levelSize
   const SpawnPlayer = () => {
     players.push({
       x: 0,
       y: 0,
       z: 0,
+      ox: 0,
+      oy: 0,
+      oz: 0,
       vx: 0,
       vy: 0,
       vz: 0,
       roll: 0,
       pitch: 0,
       yaw: 0,
-      ammo: 5,
+      ammo: 500,
       health: 100,
       shotTimer: 0,
       keys: Array(256).fill(false),
@@ -722,10 +730,10 @@
     mSpeed: 2,
   })
   
-  var shotSize = 25
-  var shotspeed  = 10
-  var shotgunSpread  = 1.25
-  var shotTimerInterval  = .5
+  var shotSize = 20
+  var shotspeed  = 25
+  var shotgunSpread  = 2
+  var shotTimerInterval  = .08
   var buckshot = []
   const SpawnShot = player => {
     x = -player.x
@@ -760,15 +768,15 @@
     }
   }
   
-  var iSparkv = .5
+  var iSparkv = 1
   var iSparkc = 5
   var sparks = []
   const SpawnSparks = (x, y, z) => {
     for(var i = 0; i < iSparkc; i++){
       var p1 = Rn() * Math.PI * 2
-      var p2 = Math.PI/2 *Rn()** .5
+      var p2 = Math.PI/2 *Rn()** .5/2
       var vx = S(p1) * S(p2) * iSparkv
-      var vy = C(p2) * iSparkv * 2
+      var vy = C(p2) * iSparkv * 3
       var vz = C(p1) * S(p2) * iSparkv
       sparks.push({
         x, y, z,
@@ -820,7 +828,7 @@
   
     var tx = player.vx
     var tz = player.vz
-    var fl = -Floor(-player.x, -player.z).position
+    var fl = -Floor(-player.x-tx, -player.z-tz).position
     
     var p = Math.atan2(player.vx, player.vz)
     var cx = S(p) * playerRadius
@@ -828,24 +836,26 @@
     var testCD = Floor(-player.x-tx-cx, -player.z-tz-cz)
     var tfl = -testCD.position
     //if(Math.abs(tfl-fl)>1) console.log(tfl-fl, player.y, tfl)
-    if(tfl-fl < -10 && player.y > tfl){
+    if(tfl-fl < -200 && player.y > tfl-1){
       var a = [player.vx, player.vy, player.vz]
       var n = [testCD.normalVec.x, testCD.normalVec.y, testCD.normalVec.z]
       var r = Coordinates.Reflect(a, n)
       d = Math.hypot(r[0], r[2])
-      r[0] /= d
-      r[2] /= d
+      r[0] /= d/5
+      r[2] /= d/5
       tx = player.vx = r[0]
       //player.vy = r[1]
       tz = player.vz = r[2]
       fl = -Floor(-player.x-tx, -player.z-tz).position
     }
     
-    
+    player.oy = player.y
     player.y += player.vy += grav
     player.y = Math.min(fl - playerHeight, player.y)
     if(player.hasTraction = player.y > fl-playerHeight-1){
       player.vy = 0
+      if(player.y-player.oy < -16)
+        player.vy += Math.max(-35, (player.y-player.oy) * 80)
       player.y = fl-playerHeight
     }
     if(player.x >= G) {
@@ -890,14 +900,16 @@
                  buckshot[idx].x < -G || 
                  buckshot[idx].z > G || 
                  buckshot[idx].z < -G || 
-                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position) < 5){
+                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position) < 2){
                 buckshot[idx].life = 0
-                SpawnSparks(buckshot[idx].x, buckshot[idx].y, buckshot[idx].z)
+                SpawnSparks(buckshot[idx].x-buckshot[idx].vx,
+                            buckshot[idx].y-buckshot[idx].vy,
+                            buckshot[idx].z-buckshot[idx].vz)
               }else{
                 x = buckshot[idx].x += buckshot[idx].vx
                 y = buckshot[idx].y += buckshot[idx].vy
                 z = buckshot[idx].z += buckshot[idx].vz
-                buckshot[idx].life -= .01
+                buckshot[idx].life -= .02
                 shape.vertices[i+0] = x
                 shape.vertices[i+1] = y
                 shape.vertices[i+2] = z
@@ -909,7 +921,7 @@
             }else if(idx>=3e3 &&
                     sparks.length && idx - 3e3 < sparks.length && idx < 6e3){
               x = sparks[idx-3e3].x += sparks[idx-3e3].vx
-              y = sparks[idx-3e3].y += sparks[idx-3e3].vy -= grav / 16
+              y = sparks[idx-3e3].y += sparks[idx-3e3].vy -= grav / 6
               z = sparks[idx-3e3].z += sparks[idx-3e3].vz
               shape.vertices[i+0] = x
               shape.vertices[i+1] = y
