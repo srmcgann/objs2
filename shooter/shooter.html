@@ -70,75 +70,15 @@
   }
   var renderer = await Coordinates.Renderer(rendererOptions)
   
-  var playbackSpeed = 1
-  //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
-  var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/redwalk.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/skymaze.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/1.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/alices.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/angels.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/fantasy1.jpg'
-  //var refTexture = 'https://i.imgur.com/Ad8pyZy.mp4'
-  //var refTexture = 'https://i.imgur.com/ztYVnB6.mp4'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/doommaze.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/28.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes4/HDRI/brutalism2_maze.jpg'
-  
   var S = Math.sin
   var C = Math.cos
   var Rn = Math.random
   
   var x, y, z, p, q, d
   
-  var ax, ay, az
-  var levelSize = 150 / 3
-  var ctx = Coordinates.Overlay.ctx
-  var c = Coordinates.Overlay.c
-  var w = c.width
-  var h = c.height
-  var muted = false
-  
   Coordinates.AnimationLoop(renderer, 'Draw')
+  var ctx = Coordinates.Overlay.ctx,c = Coordinates.Overlay.c, w = c.width, h = c.height
 
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .8}},
-    { uniform: {
-      type: 'phong',
-      value: .3
-    } },
-    { uniform: {
-      type: 'reflection',
-      map: refTexture,
-      playbackSpeed,
-      value: .05
-    } },
-  ]
-  var shader = await Coordinates.BasicShader(renderer, shaderOptions)
-
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .5}},
-    { uniform: {
-      type: 'phong',
-      value: .1
-    } },
-    { uniform: {
-      type: 'reflection',
-      playbackSpeed,
-      map: refTexture,
-      value: .15
-    } },
-    { uniform: {
-      type: 'refraction2',
-      angleOfRefraction: .05,
-      playbackSpeed,
-      map: refTexture,
-      value: .25
-    } },
-  ]
-  var glassShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
   var buttons = [
     {
@@ -285,63 +225,6 @@
     var blue  = rgb[2] / 256
     colors.push(red, green, blue, 1)
   })
-  
-  // create custom attribute shader
-  var shaderOptions = [
-    { attribute: {
-      type: 'custom',
-      enabled: true,         // can be disabled (removed from shader)
-      value: colors,         // buffer data
-      name: 'customColors',  // attribute name to inject into shader
-      stride: 4,             // in this case, we're passing RGBA floats
-      dataType: renderer.ctx.FLOAT,
-      vertDeclaration: `     // vertex shader code, pre main
-        attribute vec4 customColors;
-        varying vec4 attribCols;
-      `,
-      vertCode:        `     // vertex shader code, in main function
-        attribCols = customColors;
-      `,
-      fragDeclaration: `     // fragment shader code, pre main
-        varying vec4 attribCols;
-      `,
-      fragCode: `            // fragment shader code, in main function
-        mixColor = attribCols;
-      `,
-    }},
-  ]
-  var particleShader = await Coordinates.BasicShader(renderer, shaderOptions)
-
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .2}},
-    { uniform: {
-      type: 'phong',
-      value: .05
-    } },
-    { uniform: {
-      type: 'reflection',
-      playbackSpeed,
-      map: refTexture,
-      value: .2
-    } },
-    { uniform: {
-      type: 'refraction2',
-      playbackSpeed,
-      map: refTexture,
-      angleOfRefraction: -.5,
-      value: .4,
-    } },
-  ]
-  var enclosureShader = await Coordinates.BasicShader(renderer, shaderOptions)
-
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: 1.1}},
-    { uniform: {
-      type: 'phong',
-      value: 0
-    } }
-  ]
-  var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
   var shotgun = new Image()
   var url = 'https://srmcgann.github.io/objs2/shooter/shotgun.png'
@@ -381,22 +264,512 @@
     HUD.src = URL.createObjectURL(data)
   })
 
-  var shapes = []
+  
+  var shapes, muted = false
+  var players = [], keyTimerInterval = .2, camSel = 0, jumpHeight
+  var grav, playerMdrag, playerSpeed, playerHeight, playerRadius
+  var G, floorLookup, resolution, mainURL, mainMap, extras, enclosureSize
+  var ax, ay, az, levelSize, muted, playbackSpeed, refTexture
+  var playbackSpeed, showEnclosure, offsetX, offsetY, offsetZ
+  var enclosureOffsetX, enclosureOffsetY, enclosureOffsetZ
+  var scaleX, scaleY, scaleZ, ambientLight, backgroundLight
+  var shotSize, shotspeed, shotTimerInterval, shotgunSpread
 
-  var geoOptions = {
-    shapeType: 'particles',
-    name: 'particles',
-    geometryData,
-    alpha: .9,
-    penumbra: .25,
-    size: 1.5,
-    color: 0xff0000,
+
+  const LoadLevel = async level => {
+    shapes = []
+    switch(level){
+      case 0:
+        showEnclosure = true
+        camSel = 0
+        grav = 2
+        shotSize = 20
+        shotspeed  = 25
+        shotTimerInterval  = .2
+        shotgunSpread  = 2
+        playerMdrag = 1.4
+        playerSpeed = 2
+        playerHeight = 32
+        jumpHeight = playerHeight / 1.5
+        playerRadius = playerHeight / 1.5
+        playbackSpeed = 1
+        refTexture, playbackSpeed
+        resolution = 50
+        levelSize = 100
+        G = levelSize * 5
+        enclosureSize = G / 4
+        enclosureSize = levelSize
+        offsetX = 0
+        offsetY = -100
+        offsetZ = 0
+        scaleX = 1
+        scaleY = 1
+        scaleZ = 1
+        enclosureOffsetX = 0
+        enclosureOffsetY = -200
+        enclosureOffsetZ = 0
+        ambientLight = .25
+        backgroundLight = 1
+        refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
+        mainURL = 'https://srmcgann.github.io/objs2/maze arena 1/maze arena 1.obj'
+        mainMap = 'https://srmcgann.github.io/objs2/maze arena 1/texture.png'
+        extras = []
+      break
+      case 1:
+        showEnclosure = true
+        camSel = 0
+        grav = 2
+        shotSize = 20
+        shotspeed  = 25
+        shotTimerInterval  = .2
+        shotgunSpread  = 2
+        playerMdrag = 1.4
+        playerSpeed = 2
+        playerHeight = 32
+        playerRadius = playerHeight / 1.5
+        jumpHeight = playerHeight / 1.5
+        playbackSpeed = 1
+        refTexture, playbackSpeed
+        resolution = 16
+        levelSize = 150
+        G = levelSize * 5
+        enclosureSize = G / 4
+        offsetX = 0
+        offsetY = -100
+        offsetZ = 0
+        scaleX = 1
+        scaleY = 1
+        scaleZ = 1
+        enclosureOffsetX = 0
+        enclosureOffsetY = -200
+        enclosureOffsetZ = 0
+        ambientLight = .25
+        backgroundLight = .8
+        refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/fantasy1.jpg'
+        mainMap = 'https://srmcgann.github.io/objs2/cathedral/texture_new.png'
+        mainURL = 'https://srmcgann.github.io/objs2/cathedral/floor_new.obj'
+        extras = [
+          {
+            map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
+            URL: 'https://srmcgann.github.io/objs2/cathedral/building_top_new.obj',
+            shader: 'shader',
+          },
+          {
+            map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
+            URL: 'https://srmcgann.github.io/objs2/cathedral/glass.obj',
+            shader: 'glassShader',
+          }
+        ]
+      break
+      case 2:
+        showEnclosure = true
+        camSel = 0
+        grav = 2
+        shotSize = 20
+        shotspeed  = 25
+        shotTimerInterval  = .2
+        shotgunSpread  = 2
+        playerMdrag = 1.4
+        playerSpeed = 2
+        playerHeight = 32
+        playerRadius = playerHeight / 1.5
+        jumpHeight = playerHeight / 1.5
+        playbackSpeed = 1
+        refTexture, playbackSpeed
+        resolution = 50
+        levelSize = 300
+        G = levelSize * 5
+        enclosureSize = G / 4
+        offsetX = 0
+        offsetY = -100
+        offsetZ = 0
+        scaleX = 1
+        scaleY = 1
+        scaleZ = 1
+        enclosureOffsetX = 0
+        enclosureOffsetY = -200
+        enclosureOffsetZ = 0
+        ambientLight = .25
+        backgroundLight = .8
+        refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
+        mainURL = 'https://srmcgann.github.io/objs2/island/land.obj'
+        mainMap = 'https://srmcgann.github.io/objs2/island/texture.png'
+        extras = [
+          {
+            map: 'https://srmcgann.github.io/objs2/island/texture.png',
+            URL: 'https://srmcgann.github.io/objs2/island/ocean and trees.obj',
+            shader: 'glassShader',
+          }
+        ]
+      break
+      case 3:
+        showEnclosure = true
+        camSel = 0
+        grav = 2
+        shotSize = 20
+        shotspeed  = 25
+        shotTimerInterval  = .2
+        shotgunSpread  = 2
+        playerMdrag = 1.4
+        playerSpeed = 2
+        playerHeight = 50
+        playerRadius = playerHeight / 1.5
+        jumpHeight = playerHeight / 1.5
+        playbackSpeed = 1
+        refTexture, playbackSpeed
+        resolution = 50
+        levelSize = 200
+        G = levelSize * 4.5
+        enclosureSize = G / 4
+        offsetX = 0
+        offsetY = -100
+        offsetZ = 0
+        scaleX = 1
+        scaleY = -.5
+        scaleZ = 1
+        enclosureOffsetX = 0
+        enclosureOffsetY = -200
+        enclosureOffsetZ = 0
+        ambientLight = .25
+        backgroundLight = .8
+        refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/pinkCluds.jpg'
+        mainURL = 'https://srmcgann.github.io/objs2/eggcrate 2/eggcrate 2.obj'
+        mainMap = 'https://srmcgann.github.io/objs2/eggcrate 2/texture.png'
+        extras = []
+      break
+      case 4:
+        showEnclosure = true
+        camSel = 0
+        grav = 2
+        shotSize = 20
+        shotspeed  = 25
+        shotTimerInterval  = .2
+        shotgunSpread  = 2
+        playerMdrag = 1.4
+        playerSpeed = 2
+        playerHeight = 50
+        jumpHeight = playerHeight / 2
+        playerRadius = playerHeight / 1.5
+        playbackSpeed = 1
+        refTexture, playbackSpeed
+        resolution = 40
+        levelSize = 120
+        G = levelSize * 5
+        enclosureSize = G / 4
+        offsetX = 0
+        offsetY = -100
+        offsetZ = 0
+        scaleX = 1
+        scaleY = .5
+        scaleZ = 1
+        enclosureOffsetX = 0
+        enclosureOffsetY = -200
+        enclosureOffsetZ = 0
+        ambientLight = .5
+        backgroundLight = .6
+        extras = []
+        refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/ultracloudsbase.jpg'
+        mainURL = 'https://srmcgann.github.io/objs2/pyramid/pyramid.obj'
+        mainMap = 'https://srmcgann.github.io/objs2/pyramid/texture.png'
+      break
+      case 5:
+        showEnclosure = true
+        camSel = 0
+        grav = 2
+        shotSize = 20
+        shotspeed  = 25
+        shotTimerInterval  = .2
+        shotgunSpread  = 2
+        playerMdrag = 1.4
+        playerSpeed = 2
+        playerHeight = 32
+        playerRadius = playerHeight / 1.5
+        jumpHeight = playerHeight / 1.5
+        playbackSpeed = 1
+        refTexture, playbackSpeed
+        resolution = 50
+        levelSize = 150
+        G = levelSize * 5
+        enclosureSize = G / 4
+        offsetX = 0
+        offsetY = -100
+        offsetZ = 0
+        scaleX = 1
+        scaleY = 1
+        scaleZ = 1
+        enclosureOffsetX = 0
+        enclosureOffsetY = -200
+        enclosureOffsetZ = 0
+        ambientLight = .25
+        backgroundLight = .8
+        extras = []
+        refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
+        mainURL = 'https://srmcgann.github.io/objs2/eggcrate 2/texture.png'
+        mainMap = ''
+      break
+      case 6:
+        showEnclosure = true
+        camSel = 0
+        grav = 2
+        shotSize = 20
+        shotspeed  = 25
+        shotTimerInterval  = .2
+        shotgunSpread  = 2
+        playerMdrag = 1.4
+        playerSpeed = 2
+        playerHeight = 64
+        playerRadius = playerHeight / 1.5
+        jumpHeight = playerHeight / 1.5
+        playbackSpeed = 1
+        refTexture, playbackSpeed
+        resolution = 50
+        levelSize = 150
+        G = levelSize * 5
+        enclosureSize = G / 4
+        offsetX = 0
+        offsetY = -100
+        offsetZ = 0
+        scaleX = 1
+        scaleY = 1
+        scaleZ = 1
+        enclosureOffsetX = 0
+        enclosureOffsetY = -200
+        enclosureOffsetZ = 0
+        ambientLight = .25
+        backgroundLight = .8
+        extras = []
+        mainURL = 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.obj'
+        mainMap = 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.png'
+      break
+      case 7:
+      break
+    }
+
+    var shaderOptions = [
+      {lighting: {type: 'ambientLight', value: ambientLight}},
+      { uniform: {
+        type: 'phong',
+        value: .4
+      } },
+      { uniform: {
+        type: 'reflection',
+        map: refTexture,
+        playbackSpeed,
+        value: .05
+      } },
+    ]
+    var shader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+    var shaderOptions = [
+      {lighting: {type: 'ambientLight', value: .5 * ambientLight}},
+      { uniform: {
+        type: 'phong',
+        value: .1
+      } },
+      { uniform: {
+        type: 'reflection',
+        playbackSpeed,
+        map: refTexture,
+        value: .15
+      } },
+      { uniform: {
+        type: 'refraction2',
+        angleOfRefraction: .05,
+        playbackSpeed,
+        map: refTexture,
+        value: .25
+      } },
+    ]
+    var glassShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+    var shaderOptions = [
+      {lighting: {type: 'ambientLight', value: .1}},
+      { uniform: {
+        type: 'phong',
+        value: .05
+      } },
+      { uniform: {
+        type: 'reflection',
+        playbackSpeed,
+        map: refTexture,
+        value: .2
+      } },
+      { uniform: {
+        type: 'refraction2',
+        playbackSpeed,
+        map: refTexture,
+        angleOfRefraction: -.5,
+        value: .3,
+      } },
+    ]
+    var enclosureShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+    if(typeof backgroundShape != 'undefined'){
+      backgroundShape.rebindTextures = true
+      backgroundShape.map = refTexture
+      backgroundShape.shader.datasets.map((dataset) => {
+        if(dataset?.optionalLighting){
+          dataset.optionalLighting[0].value = backgroundLighting
+        }
+      })
+    }
+    
+    
+    var geoOptions = {
+      shapeType: 'obj',
+      //map: 'https://srmcgann.github.io/objs2/testEnvironment/texture.png',
+      url: 'https://srmcgann.github.io/objs2/testEnvironment/enclosure.obj',
+      name: 'enclosure',
+      cullFace: '',
+      disableDepthTest: true,
+      flipNormals: false,
+      alpha: .9,
+      scaleX: enclosureSize,
+      scaleY: enclosureSize,
+      scaleZ: enclosureSize,
+      color: 0x00ffff,
+      colorMix: .2,
+      objX: enclosureOffsetX,
+      objY: enclosureOffsetY,
+      objZ: enclosureOffsetZ,
+    }
+    if(showEnclosure) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      shapes.push(geometry)
+      await enclosureShader.ConnectGeometry(geometry)
+    })
+    
+    extras.map(async extra => {
+      var geoOptions = {
+        shapeType: 'obj',
+        map: extra.map,
+        url: extra.URL,
+        name: 'extras',
+        scaleX: levelSize,
+        scaleY: levelSize,
+        scaleZ: levelSize,
+        colorMix: 0,
+        objX: offsetX,
+        objY: offsetY,
+        objZ: offsetZ,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        switch(extra.shader){
+          case 'glassShader':
+            await glassShader.ConnectGeometry(geometry)
+          break
+          case 'shader':
+            await shader.ConnectGeometry(geometry)
+          break
+        }
+      })
+    })
+      
+    var geoOptions = {
+      shapeType: 'obj',
+      url: mainURL,
+      map: mainMap,
+      name: 'main',
+      cullFace: '',
+      flipNormals: false,
+      showNormals: false,
+      scaleX: levelSize * scaleX,
+      scaleY: levelSize * scaleY,
+      scaleZ: levelSize * scaleZ,
+      color: 0x118822,
+      colorMix: 0,
+      objX: offsetX,
+      objY: offsetY,
+      objZ: offsetZ,
+      //disableDepthTest: true,
+      //alpha: .9,
+    }
+    await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      var minx = 6e6
+      var maxx = -6e6
+      var miny = 6e6
+      var maxy = -6e6
+      var minz = 6e6
+      var maxz = -6e6
+      for(var i = 0; i < geometry.vertices.length; i += 9){
+        var x1 = geometry.vertices[i+0]
+        var z1 = geometry.vertices[i+2]
+        var x2 = geometry.vertices[i+3]
+        var z2 = geometry.vertices[i+5]
+        var x3 = geometry.vertices[i+6]
+        var z3 = geometry.vertices[i+8]
+        ax = (x1+x2+x3) / 3
+        az = (z1+z2+z3) / 3
+        if(ax < minx) minx = ax
+        if(ax > maxx) maxx = ax
+        if(az < minz) minz = az
+        if(az > maxz) maxz = az
+      }
+      floorLookup = Array(resolution**2).fill().map((v, i) => ({
+        cx: 0, cz: 0,
+        normalVecs: [],
+        polyCenters: [],
+      }))
+      var width = (maxx-minx) * 1.00001
+      var depth = (maxz-minz) * 1.00001
+      for(var i = 0; i < geometry.vertices.length; i += 9){
+        var x1 = geometry.vertices[i+0]
+        var y1 = geometry.vertices[i+1]
+        var z1 = geometry.vertices[i+2]
+        var x2 = geometry.vertices[i+3]
+        var y2 = geometry.vertices[i+4]
+        var z2 = geometry.vertices[i+5]
+        var x3 = geometry.vertices[i+6]
+        var y3 = geometry.vertices[i+7]
+        var z3 = geometry.vertices[i+8]
+        ax = (x1+x2+x3) / 3
+        ay = (y1+y2+y3) / 3
+        az = (z1+z2+z3) / 3
+        var idx1 = (ax-minx)/width*resolution | 0
+        var idx2 = (az-minz)/depth*resolution | 0
+        var idx = idx1 + idx2*resolution
+        floorLookup[idx].polyCenters.push({ x: ax, y: ay, z: az })
+        var nx=0, ny=0, nz=0
+        for(var m = 0; m < 3; m++){
+          nx += geometry.normalVecs[i+0+m*3]
+          ny += geometry.normalVecs[i+1+m*3]
+          nz += geometry.normalVecs[i+2+m*3]
+        }
+        nx /= 3
+        ny /= 3
+        nz /= 3
+        floorLookup[idx].normalVecs.push({ x: nx, y: ny, z: nz })
+      }
+      floorLookup.map((v, i) => {
+        var ax = 0
+        //var ay = 0
+        var az = 0
+        v.polyCenters.map((q, j) => {
+          ax += q.x
+          //ay += q.y
+          az += q.z
+        })
+        v.cx = ax /= v.polyCenters.length
+        v.cz = az /= v.polyCenters.length
+      })
+      shapes.push(geometry)
+      await shader.ConnectGeometry(geometry)
+    })
   }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await particleShader.ConnectGeometry(geometry)
-  })
+   
+  var level = 4
+  await LoadLevel(level)
 
+  var shaderOptions = [
+    {lighting: {type: 'ambientLight', value: 1.1}},
+    { uniform: {
+      type: 'phong',
+      value: 0
+    } }
+  ]
+  var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+  var backgroundShape
   var geoOptions = {
     shapeType: 'dodecahedron',
     name: 'background',
@@ -408,180 +781,53 @@
     colorMix: 0,
   }
   await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
+    backgroundShape = geometry
     await backgroundShader.ConnectGeometry(geometry)
   })
+  
+
+  // create custom attribute shader
+  var shaderOptions = [
+    { attribute: {
+      type: 'custom',
+      enabled: true,         // can be disabled (removed from shader)
+      value: colors,         // buffer data
+      name: 'customColors',  // attribute name to inject into shader
+      stride: 4,             // in this case, we're passing RGBA floats
+      dataType: renderer.ctx.FLOAT,
+      vertDeclaration: `     // vertex shader code, pre main
+        attribute vec4 customColors;
+        varying vec4 attribCols;
+      `,
+      vertCode:        `     // vertex shader code, in main function
+        attribCols = customColors;
+      `,
+      fragDeclaration: `     // fragment shader code, pre main
+        varying vec4 attribCols;
+      `,
+      fragCode: `            // fragment shader code, in main function
+        mixColor = attribCols;
+      `,
+    }},
+  ]
+  var particleShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+  var particlesShape
   var geoOptions = {
-    shapeType: 'obj',
-    //map: 'https://srmcgann.github.io/objs2/testEnvironment/texture.png',
-    url: 'https://srmcgann.github.io/objs2/testEnvironment/enclosure.obj',
-    name: 'enclosure',
-    cullFace: '',
-    disableDepthTest: true,
-    flipNormals: false,
+    shapeType: 'particles',
+    name: 'particles',
+    geometryData,
     alpha: .9,
-    scaleX: levelSize*5.66/1.8,
-    scaleY: levelSize*5/2.5,
-    scaleZ: levelSize*5.66/1.8,
-    color: 0x00ffff,
-    colorMix: .2,
-    objY: -200,
-  }
-  if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await enclosureShader.ConnectGeometry(geometry)
-  })
-  
-  
-  var floorLookup
-  var resolution = 50
-  var geoOptions = {
-    shapeType: 'obj',
-    //map: 'https://srmcgann.github.io/objs2/island/texture.png',
-    //url: 'https://srmcgann.github.io/objs2/island/land.obj?3',
-    //map: 'https://srmcgann.github.io/objs2/eggcrate 2/texture.png',
-    //url: 'https://srmcgann.github.io/objs2/eggcrate 2/eggcrate 2.obj',
-    //map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
-    //url: 'https://srmcgann.github.io/objs2/cathedral/floor_new.obj?3',
-    //map: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.png',
-    //url: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.obj',
-    //url: 'https://srmcgann.github.io/objs2/maze arena 1/maze arena 1.obj?2',
-    //map: 'https://srmcgann.github.io/objs2/maze arena 1/texture.png?2',
-    url: 'https://srmcgann.github.io/objs2/pyramid/pyramid.obj',
-    map: 'https://srmcgann.github.io/objs2/pyramid/texture.png',
-    name: 'main',
-    cullFace: '',
-    flipNormals: false,
-    showNormals: false,
-    scaleX: levelSize * 3,
-    scaleY: levelSize * 1.5,
-    scaleZ: levelSize * 3,
-    color: 0x118822,
-    colorMix: 0,
-    objY: -100,
+    penumbra: .25,
+    size: 2.5,
+    color: 0xff0000,
   }
   await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    var minx = 6e6
-    var maxx = -6e6
-    var miny = 6e6
-    var maxy = -6e6
-    var minz = 6e6
-    var maxz = -6e6
-    for(var i = 0; i < geometry.vertices.length; i += 9){
-      var x1 = geometry.vertices[i+0]
-      var z1 = geometry.vertices[i+2]
-      var x2 = geometry.vertices[i+3]
-      var z2 = geometry.vertices[i+5]
-      var x3 = geometry.vertices[i+6]
-      var z3 = geometry.vertices[i+8]
-      ax = (x1+x2+x3) / 3
-      az = (z1+z2+z3) / 3
-      if(ax < minx) minx = ax
-      if(ax > maxx) maxx = ax
-      if(az < minz) minz = az
-      if(az > maxz) maxz = az
-    }
-    floorLookup = Array(resolution**2).fill().map((v, i) => ({
-      cx: 0, cz: 0,
-      normalVecs: [],
-      polyCenters: [],
-    }))
-    var width = (maxx-minx) * 1.00001
-    var depth = (maxz-minz) * 1.00001
-    for(var i = 0; i < geometry.vertices.length; i += 9){
-      var x1 = geometry.vertices[i+0]
-      var y1 = geometry.vertices[i+1]
-      var z1 = geometry.vertices[i+2]
-      var x2 = geometry.vertices[i+3]
-      var y2 = geometry.vertices[i+4]
-      var z2 = geometry.vertices[i+5]
-      var x3 = geometry.vertices[i+6]
-      var y3 = geometry.vertices[i+7]
-      var z3 = geometry.vertices[i+8]
-      ax = (x1+x2+x3) / 3
-      ay = (y1+y2+y3) / 3
-      az = (z1+z2+z3) / 3
-      var idx1 = (ax-minx)/width*resolution | 0
-      var idx2 = (az-minz)/depth*resolution | 0
-      var idx = idx1 + idx2*resolution
-      floorLookup[idx].polyCenters.push({ x: ax, y: ay, z: az })
-      var nx=0, ny=0, nz=0
-      for(var m = 0; m < 3; m++){
-        nx += geometry.normalVecs[i+0+m*3]
-        ny += geometry.normalVecs[i+1+m*3]
-        nz += geometry.normalVecs[i+2+m*3]
-      }
-      nx /= 3
-      ny /= 3
-      nz /= 3
-      floorLookup[idx].normalVecs.push({ x: nx, y: ny, z: nz })
-    }
-    floorLookup.map((v, i) => {
-      var ax = 0
-      //var ay = 0
-      var az = 0
-      v.polyCenters.map((q, j) => {
-        ax += q.x
-        //ay += q.y
-        az += q.z
-      })
-      v.cx = ax /= v.polyCenters.length
-      v.cz = az /= v.polyCenters.length
-    })
-    shapes.push(geometry)
-    await shader.ConnectGeometry(geometry)
+    particlesShape = geometry
+    await particleShader.ConnectGeometry(geometry)
   })
 
-  var geoOptions = {
-    shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
-    url: 'https://srmcgann.github.io/objs2/cathedral/building_top_new.obj?2',
-    name: 'extras',
-    scaleX: levelSize,
-    scaleY: levelSize,
-    scaleZ: levelSize,
-    flipNormals: true,
-    colorMix: 0,
-    objY: -100,
-  }
-  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await glassShader.ConnectGeometry(geometry)
-  })
-  
-  var geoOptions = {
-    shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/cathedral/texture_new.png',
-    url: 'https://srmcgann.github.io/objs2/cathedral/glass.obj?3',
-    name: 'glass',
-    scaleX: levelSize,
-    scaleY: levelSize,
-    scaleZ: levelSize,
-    colorMix: 0,
-    objY: -100,
-  }
-  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await glassShader.ConnectGeometry(geometry)
-  })
-  
-  var geoOptions = {
-    shapeType: 'obj',
-    map: 'https://srmcgann.github.io/objs2/island/texture.png',
-    url: 'https://srmcgann.github.io/objs2/island/ocean and trees.obj',
-    name: 'main',
-    scaleX: levelSize,
-    scaleY: levelSize,
-    scaleZ: levelSize,
-    flipNormals: false,
-    colorMix: 0,
-    objY: -100,
-  }
-  if(0)await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await glassShader.ConnectGeometry(geometry)
-  })
-  
+
   var markers = []
   const Floor = (x, z, pushMarkers = false) => {
     var mind = 6e6, mind2 = 6e6, idx = -1, position = -6e6
@@ -621,16 +867,7 @@
     return {position, normalVec, nearestWallNormal}
   }
   
-  var players = []
-  var keyTimerInterval = .2
-  var camSel = 0
-  var jumpHeight = 25
-  var grav = 2
-  var playerMdrag = 1.4
-  var playerSpeed = 2
-  var playerHeight = 32 / 1.5
-  var playerRadius = 16
-  var G = 1240 / 50 * levelSize / 1.75
+  
   const SpawnPlayer = () => {
     players.push({
       x: 0,
@@ -673,7 +910,7 @@
   }
   
   window.onkeydown = e => {
-    //console.log(e.keyCode)
+    console.log(e.keyCode)
     if(e.keyCode == 77){
       ToggleMute(true)
     }
@@ -749,10 +986,6 @@
     mSpeed: 2,
   })
   
-  var shotSize = 20
-  var shotspeed  = 25
-  var shotgunSpread  = 2
-  var shotTimerInterval  = .08
   var buckshot = []
   const SpawnShot = player => {
     x = -player.x
@@ -787,7 +1020,7 @@
     }
   }
   
-  var iSparkv = 2
+  var iSparkv = 3
   var iSparkc = 10
   var sparks = []
   var sensorPoints = []
@@ -855,7 +1088,7 @@
   
     player.oy = player.y
     fl = -Floor(-player.x-player.vx, -player.z-player.vz).position.y
-    player.hasTraction = player.y > fl-playerHeight-1
+    player.hasTraction = player.y > fl-playerHeight-2
     var vx = 0
     var vy = 0
     var vz = 0
@@ -875,7 +1108,7 @@
           player.vz = r[2]
         }
         
-        if(0 && player.y-player.oy < -16)
+        if(0 && player.y-player.oy < -6)
           player.vy += Math.max(-35, (player.y-player.oy) * 80)
       }
     }
@@ -909,83 +1142,83 @@
     player.pitch = Math.min(Math.PI/2, Math.max(-Math.PI/2, player.pitch))
     renderer.pitch += (player.pitch - renderer.pitch) / 1.5
   
+    renderer.Draw(backgroundShape)
+    
+    // particles
+    var ar = particlesShape.shader.datasets[0].optionalAttributes[0].value
+    sparks = sparks.filter((v, i) => v.life > 0)
+    buckshot = buckshot.filter((v, i) => v.life > 0)
+    sensorPoints.forEach(v=>markers.push(v))
+    for(var i = 0; i < particlesShape.vertices.length; i += 3){
+      var idx = i/3
+      
+      if(buckshot.length && idx < buckshot.length && idx < 3e3){
+        x = buckshot[idx].x
+        y = buckshot[idx].y
+        z = buckshot[idx].z
+        var vx = buckshot[idx].vx
+        var vy = buckshot[idx].vy
+        var vz = buckshot[idx].vz
+        var bfl = -Floor(x+vx, z+vz).position.y
+        if(x > G || x < -G || z > G || z < -G || -y > bfl-10){
+          buckshot[idx].life = 0
+          SpawnSparks(x, y-vy/4, z)
+        }else{
+          x = buckshot[idx].x += buckshot[idx].vx
+          y = buckshot[idx].y += buckshot[idx].vy
+          z = buckshot[idx].z += buckshot[idx].vz
+          buckshot[idx].life -= .02
+          particlesShape.vertices[i+0] = x
+          particlesShape.vertices[i+1] = y
+          particlesShape.vertices[i+2] = z
+          ar[idx*4+0] = 1
+          ar[idx*4+1] = 0
+          ar[idx*4+2] = 0
+          ar[idx*4+3] = 1
+        }
+      }else if(idx>=3e3 &&
+              sparks.length && idx - 3e3 < sparks.length && idx < 6e3){
+        x = sparks[idx-3e3].x += sparks[idx-3e3].vx
+        y = sparks[idx-3e3].y += sparks[idx-3e3].vy -= grav / 10
+        z = sparks[idx-3e3].z += sparks[idx-3e3].vz
+        particlesShape.vertices[i+0] = x
+        particlesShape.vertices[i+1] = y
+        particlesShape.vertices[i+2] = z
+        ar[idx*4+0] = 1 * 2
+        ar[idx*4+1] = .75 * 2
+        ar[idx*4+2] = 0
+        ar[idx*4+3] = sparks[idx-3e3].life ** .5
+        sparks[idx-3e3].life -= .05
+      }else if(idx>=6e3 &&
+              markers.length && idx - 6e3 < markers.length && idx < 9e3){
+        x = markers[idx-6e3][0]
+        y = markers[idx-6e3][1]
+        z = markers[idx-6e3][2]
+        particlesShape.vertices[i+0] = x
+        particlesShape.vertices[i+1] = y
+        particlesShape.vertices[i+2] = z
+        if(idx - 6e3 > markers.length - 7){ // actual floor point
+          ar[idx*4+0] = 2
+          ar[idx*4+1] = 0
+          ar[idx*4+2] = 2
+          ar[idx*4+3] = 1
+        }else{
+          ar[idx*4+0] = 0
+          ar[idx*4+1] = 2
+          ar[idx*4+2] = 0
+          ar[idx*4+3] = 1
+        }
+      }else{
+        particlesShape.vertices[i+0] = 1e5
+        particlesShape.vertices[i+1] = 1e5
+        particlesShape.vertices[i+2] = 1e5
+      }
+    }
+    renderer.Draw(particlesShape)
+    ///////////
+  
     shapes.forEach(shape => {
       switch(shape.name){
-        case 'background':
-          renderer.Draw(shape)
-        break
-        case 'particles':
-          var ar = shape.shader.datasets[0].optionalAttributes[0].value
-          sparks = sparks.filter((v, i) => v.life > 0)
-          buckshot = buckshot.filter((v, i) => v.life > 0)
-          sensorPoints.forEach(v=>markers.push(v))
-          for(var i = 0; i < shape.vertices.length; i += 3){
-            var idx = i/3
-            
-            if(buckshot.length && idx < buckshot.length && idx < 3e3){
-              x = buckshot[idx].x
-              y = buckshot[idx].y
-              z = buckshot[idx].z
-              var vx = buckshot[idx].vx
-              var vy = buckshot[idx].vy
-              var vz = buckshot[idx].vz
-              var bfl = -Floor(-x-vx, -z-vz).position.y
-              if(x > G || x < -G || z > G || z < -G || -y > bfl-10){
-                buckshot[idx].life = 0
-                SpawnSparks(x, y-vy/4, z)
-              }else{
-                x = buckshot[idx].x += buckshot[idx].vx
-                y = buckshot[idx].y += buckshot[idx].vy
-                z = buckshot[idx].z += buckshot[idx].vz
-                buckshot[idx].life -= .02
-                shape.vertices[i+0] = x
-                shape.vertices[i+1] = y
-                shape.vertices[i+2] = z
-                ar[idx*4+0] = 1
-                ar[idx*4+1] = 0
-                ar[idx*4+2] = 0
-                ar[idx*4+3] = 1
-              }
-            }else if(idx>=3e3 &&
-                    sparks.length && idx - 3e3 < sparks.length && idx < 6e3){
-              x = sparks[idx-3e3].x += sparks[idx-3e3].vx
-              y = sparks[idx-3e3].y += sparks[idx-3e3].vy -= grav / 6
-              z = sparks[idx-3e3].z += sparks[idx-3e3].vz
-              shape.vertices[i+0] = x
-              shape.vertices[i+1] = y
-              shape.vertices[i+2] = z
-              ar[idx*4+0] = 1 * 2
-              ar[idx*4+1] = .75 * 2
-              ar[idx*4+2] = 0
-              ar[idx*4+3] = sparks[idx-3e3].life ** .5
-              sparks[idx-3e3].life -= .05
-            }else if(idx>=6e3 &&
-                    markers.length && idx - 6e3 < markers.length && idx < 9e3){
-              x = markers[idx-6e3][0]
-              y = markers[idx-6e3][1]
-              z = markers[idx-6e3][2]
-              shape.vertices[i+0] = x
-              shape.vertices[i+1] = y
-              shape.vertices[i+2] = z
-              if(idx - 6e3 > markers.length - 7){ // actual floor point
-                ar[idx*4+0] = 2
-                ar[idx*4+1] = 0
-                ar[idx*4+2] = 2
-                ar[idx*4+3] = 1
-              }else{
-                ar[idx*4+0] = 0
-                ar[idx*4+1] = 2
-                ar[idx*4+2] = 0
-                ar[idx*4+3] = 1
-              }
-            }else{
-              shape.vertices[i+0] = 1e5
-              shape.vertices[i+1] = 1e5
-              shape.vertices[i+2] = 1e5
-            }
-          }
-          renderer.Draw(shape)
-        break
         case 'main':
           shape.x = 0
           shape.y = 0
