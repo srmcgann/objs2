@@ -265,7 +265,7 @@
   })
 
   
-  var shapes, muted = false
+  var shapes, muted = false, recoil=0
   var players = [], keyTimerInterval = .2, camSel = 0, jumpHeight
   var grav, playerMdrag, playerSpeed, playerHeight, playerRadius
   var G, floorLookup, resolution, mainURL, mainMap, extras, enclosureSize
@@ -296,7 +296,7 @@
         refTexture, playbackSpeed
         resolution = 50
         levelSize = 100
-        G = levelSize * 5
+        G = levelSize * 4.5
         enclosureSize = G / 4
         enclosureSize = levelSize
         offsetX = 0
@@ -332,7 +332,7 @@
         refTexture, playbackSpeed
         resolution = 16
         levelSize = 150
-        G = levelSize * 5
+        G = levelSize * 4.5
         enclosureSize = G / 4
         offsetX = 0
         offsetY = -100
@@ -378,7 +378,7 @@
         refTexture, playbackSpeed
         resolution = 50
         levelSize = 300
-        G = levelSize * 5
+        G = levelSize * 4.5
         enclosureSize = G / 4
         offsetX = 0
         offsetY = -100
@@ -453,14 +453,14 @@
         playbackSpeed = 1
         refTexture, playbackSpeed
         resolution = 40
-        levelSize = 120
-        G = levelSize * 5
+        levelSize = 150
+        G = levelSize * 4.5
         enclosureSize = G / 4
         offsetX = 0
         offsetY = -100
         offsetZ = 0
         scaleX = 1
-        scaleY = .5
+        scaleY = .66
         scaleZ = 1
         enclosureOffsetX = 0
         enclosureOffsetY = -200
@@ -475,42 +475,7 @@
       case 5:
         showEnclosure = true
         camSel = 0
-        grav = 2
-        shotSize = 20
-        shotspeed  = 25
-        shotTimerInterval  = .2
-        shotgunSpread  = 2
-        playerMdrag = 1.4
-        playerSpeed = 2
-        playerHeight = 32
-        playerRadius = playerHeight / 1.5
-        jumpHeight = playerHeight / 1.5
-        playbackSpeed = 1
-        refTexture, playbackSpeed
-        resolution = 50
-        levelSize = 150
-        G = levelSize * 5
-        enclosureSize = G / 4
-        offsetX = 0
-        offsetY = -100
-        offsetZ = 0
-        scaleX = 1
-        scaleY = 1
-        scaleZ = 1
-        enclosureOffsetX = 0
-        enclosureOffsetY = -200
-        enclosureOffsetZ = 0
-        ambientLight = .25
-        backgroundLight = .8
-        extras = []
-        refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
-        mainURL = 'https://srmcgann.github.io/objs2/eggcrate 2/texture.png'
-        mainMap = ''
-      break
-      case 6:
-        showEnclosure = true
-        camSel = 0
-        grav = 2
+        grav = 1.1
         shotSize = 20
         shotspeed  = 25
         shotTimerInterval  = .2
@@ -519,18 +484,18 @@
         playerSpeed = 2
         playerHeight = 64
         playerRadius = playerHeight / 1.5
-        jumpHeight = playerHeight / 1.5
+        jumpHeight = playerHeight / 2
         playbackSpeed = 1
         refTexture, playbackSpeed
         resolution = 50
-        levelSize = 150
-        G = levelSize * 5
-        enclosureSize = G / 4
+        levelSize = 250
+        G = levelSize * 4.5
+        enclosureSize = G / 4.5
         offsetX = 0
         offsetY = -100
         offsetZ = 0
         scaleX = 1
-        scaleY = 1
+        scaleY = .5
         scaleZ = 1
         enclosureOffsetX = 0
         enclosureOffsetY = -200
@@ -538,10 +503,9 @@
         ambientLight = .25
         backgroundLight = .8
         extras = []
+        refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars2.jpg'
         mainURL = 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.obj'
         mainMap = 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.png'
-      break
-      case 7:
       break
     }
 
@@ -757,7 +721,7 @@
     })
   }
    
-  var level = 4
+  var level = 5
   await LoadLevel(level)
 
   var shaderOptions = [
@@ -1073,6 +1037,7 @@
           player.shotTimer = t + shotTimerInterval
           player.ammo--
           SpawnShot(player)
+          recoil += 50
         }else{
           if(!player.ammo){
             player.shotTimer = t + shotTimerInterval / 1
@@ -1093,19 +1058,19 @@
     var vy = 0
     var vz = 0
     for(var j = 0; j < 6; j++){
-       p = Math.atan2(-player.vx, -player.vz) + Math.PI * 2 / 6 * j
+      p = Math.atan2(-player.vx, -player.vz) + Math.PI / 6 * j - Math.PI/2
       cx = -S(p) * playerRadius
       cz = -C(p) * playerRadius
       var testCD = Floor(-player.x-player.vx-cx, -player.z-player.vz-cz, !j)
       sensorPoints.push([-player.x-cx, testCD.position.y, -player.z-cz])
 
       if(player.hasTraction){
-        if(-fl-testCD.position.y < -playerHeight){
+        if(-fl-testCD.position.y < -playerHeight/2){
           var a = [player.vx, 0, player.vz]
           var n = testCD.nearestWallNormal
           var r = Coordinates.Reflect(a, n)
-          player.vx = r[0]
-          player.vz = r[2]
+          player.vx = r[0] / 1.5
+          player.vz = r[2] / 1.5
         }
         
         if(0 && player.y-player.oy < -6)
@@ -1159,7 +1124,7 @@
         var vx = buckshot[idx].vx
         var vy = buckshot[idx].vy
         var vz = buckshot[idx].vz
-        var bfl = -Floor(x+vx, z+vz).position.y
+        var bfl = -Floor(x+vx, z+vz, true).position.y
         if(x > G || x < -G || z > G || z < -G || -y > bfl-10){
           buckshot[idx].life = 0
           SpawnSparks(x, y-vy/4, z)
@@ -1264,10 +1229,12 @@
       }
     }
     
+    recoil = Math.min(200, recoil)
     ctx.drawImage(shotgun, c.width/2-shotgun.width/2 + gunSway.x,
-                           h-shotgun.height/1.75 + gunSway.y,
+                           h-shotgun.height/1.75 + gunSway.y + recoil,
                            shotgun.width, shotgun.height/2.5)
     ctx.drawImage(HUD,0,0,w,h)
+    recoil /= 1.5
     
     ctx.font = '40px Technology'
     for(var i = 0; i < Math.min(12, player.ammo); i++){
