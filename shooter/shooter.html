@@ -72,10 +72,10 @@
   
   var playbackSpeed = 1
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
-  //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
+  var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/3.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/redwalk.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/skymaze.jpg'
-  var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/1.jpg'
+  //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/1.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/19.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/alices.jpg'
   //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/angels.jpg'
@@ -94,7 +94,7 @@
   var x, y, z, p, q, d
   
   var ax, ay, az
-  var levelSize = 150 / 4
+  var levelSize = 150 / 3
   var ctx = Coordinates.Overlay.ctx
   var c = Coordinates.Overlay.c
   var w = c.width
@@ -104,10 +104,10 @@
   Coordinates.AnimationLoop(renderer, 'Draw')
 
   var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .2}},
+    {lighting: {type: 'ambientLight', value: .8}},
     { uniform: {
       type: 'phong',
-      value: .2
+      value: .3
     } },
     { uniform: {
       type: 'reflection',
@@ -418,14 +418,14 @@
     name: 'enclosure',
     cullFace: '',
     disableDepthTest: true,
-    flipNormals: true,
+    flipNormals: false,
     alpha: .9,
-    scaleX: levelSize*5.66,
-    scaleY: levelSize*5,
-    scaleZ: levelSize*5.66,
+    scaleX: levelSize*5.66/1.8,
+    scaleY: levelSize*5/2.5,
+    scaleZ: levelSize*5.66/1.8,
     color: 0x00ffff,
     colorMix: .2,
-    objY: -10,
+    objY: -200,
   }
   if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
     shapes.push(geometry)
@@ -434,7 +434,7 @@
   
   
   var floorLookup
-  var resolution = 60
+  var resolution = 50
   var geoOptions = {
     shapeType: 'obj',
     //map: 'https://srmcgann.github.io/objs2/island/texture.png',
@@ -445,14 +445,17 @@
     //url: 'https://srmcgann.github.io/objs2/cathedral/floor_new.obj?3',
     //map: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.png',
     //url: 'https://srmcgann.github.io/objs2/eggcrate/eggcrate.obj',
-    url: 'https://srmcgann.github.io/objs2/maze arena 1/maze arena 1.obj?2',
-    map: 'https://srmcgann.github.io/objs2/maze arena 1/texture.png?2',
+    //url: 'https://srmcgann.github.io/objs2/maze arena 1/maze arena 1.obj?2',
+    //map: 'https://srmcgann.github.io/objs2/maze arena 1/texture.png?2',
+    url: 'https://srmcgann.github.io/objs2/pyramid/pyramid.obj',
+    map: 'https://srmcgann.github.io/objs2/pyramid/texture.png',
     name: 'main',
     cullFace: '',
     flipNormals: false,
-    scaleX: levelSize,
-    scaleY: levelSize / 2,
-    scaleZ: levelSize,
+    showNormals: false,
+    scaleX: levelSize * 3,
+    scaleY: levelSize * 1.5,
+    scaleZ: levelSize * 3,
     color: 0x118822,
     colorMix: 0,
     objY: -100,
@@ -526,7 +529,7 @@
       v.cz = az /= v.polyCenters.length
     })
     shapes.push(geometry)
-    await glassShader.ConnectGeometry(geometry)
+    await shader.ConnectGeometry(geometry)
   })
 
   var geoOptions = {
@@ -580,8 +583,7 @@
   })
   
   var markers = []
-  const Floor = (x, z) => {
-    markers = []
+  const Floor = (x, z, pushMarkers = false) => {
     var mind = 6e6, idx = -1, position = -6e6
     var normalVec = {x: 0, y: 0, z: 0}
     floorLookup.forEach((v, i) => {
@@ -592,10 +594,10 @@
     })
     mind = 6e6
     floorLookup[idx].polyCenters.forEach((v, i) => {
-      markers.push([v.x, v.y, v.z])
+      if(pushMarkers) markers.push([v.x, v.y, v.z])
       if((d=Math.hypot(v.x-x, v.z-z)) < mind){
         mind = d
-        position = v.y
+        position = structuredClone(v)
         normalVec = floorLookup[idx].normalVecs[i]
       }
     })
@@ -610,8 +612,8 @@
   var playerMdrag = 1.4
   var playerSpeed = 2
   var playerHeight = 32 / 1.5
-  var playerRadius = 32
-  var G = 1240 / 50 * levelSize
+  var playerRadius = 16
+  var G = 1240 / 50 * levelSize / 1.75
   const SpawnPlayer = () => {
     players.push({
       x: 0,
@@ -654,7 +656,7 @@
   }
   
   window.onkeydown = e => {
-    console.log(e.keyCode)
+    //console.log(e.keyCode)
     if(e.keyCode == 77){
       ToggleMute(true)
     }
@@ -768,16 +770,18 @@
     }
   }
   
-  var iSparkv = 1
-  var iSparkc = 5
+  var iSparkv = 2
+  var iSparkc = 10
   var sparks = []
+  var sensorPoints = []
   const SpawnSparks = (x, y, z) => {
     for(var i = 0; i < iSparkc; i++){
+      var v = .25 + Rn() * iSparkv * .75
       var p1 = Rn() * Math.PI * 2
-      var p2 = Math.PI/2 *Rn()** .5/2
-      var vx = S(p1) * S(p2) * iSparkv
-      var vy = C(p2) * iSparkv * 3
-      var vz = C(p1) * S(p2) * iSparkv
+      var p2 = Math.PI/2 *Rn()** .5
+      var vx = S(p1) * S(p2) * v
+      var vy = C(p2) * v * 2
+      var vz = C(p1) * S(p2) * v
       sparks.push({
         x, y, z,
         vx, vy, vz,
@@ -787,11 +791,14 @@
   }
   
   renderer.z = renderer.width > 1e3 ? 10 : 20
-  var fl 
+  var fl, cx, cz
   
   window.Draw = () => {
     var t = renderer.frameCount / 60
     renderer.Clear()
+    
+    markers = []
+    sensorPoints = []
   
     DoKeys()
     
@@ -801,6 +808,9 @@
         player.shotTimer = 0
     }
     
+    if(player.hasTraction){
+      player.vy = 0
+    }
     // jump
     if(renderer.mouseButton == 2 && player.hasTraction) {
       player.vy -= jumpHeight
@@ -826,38 +836,41 @@
       }
     }
   
-    var tx = player.vx
-    var tz = player.vz
-    var fl = -Floor(-player.x-tx, -player.z-tz).position
-    
-    var p = Math.atan2(player.vx, player.vz)
-    var cx = S(p) * playerRadius
-    var cz = C(p) * playerRadius
-    var testCD = Floor(-player.x-tx-cx, -player.z-tz-cz)
-    var tfl = -testCD.position
-    //if(Math.abs(tfl-fl)>1) console.log(tfl-fl, player.y, tfl)
-    if(tfl-fl < -200 && player.y > tfl-1){
-      var a = [player.vx, player.vy, player.vz]
-      var n = [testCD.normalVec.x, testCD.normalVec.y, testCD.normalVec.z]
-      var r = Coordinates.Reflect(a, n)
-      d = Math.hypot(r[0], r[2])
-      r[0] /= d/5
-      r[2] /= d/5
-      tx = player.vx = r[0]
-      //player.vy = r[1]
-      tz = player.vz = r[2]
-      fl = -Floor(-player.x-tx, -player.z-tz).position
+    player.oy = player.y
+    fl = -Floor(-player.x-player.vx, -player.z-player.vz).position.y
+    player.hasTraction = player.y > fl-playerHeight-1
+    var vx = 0
+    var vy = 0
+    var vz = 0
+    for(var j = 0; j < 6; j++){
+       p = Math.atan2(-player.vx, -player.vz) + Math.PI * 2 / 6 * j
+      cx = -S(p) * playerRadius
+      cz = -C(p) * playerRadius
+      var testCD = Floor(-player.x-player.vx-cx, -player.z-player.vz-cz, !j)
+      sensorPoints.push([-player.x-cx, testCD.position.y, -player.z-cz])
+
+      if(player.hasTraction){
+        if(-fl-testCD.position.y < -playerHeight){
+          var a = [-player.vx, 0, -player.vz]
+          p = Math.atan2(testCD.position.x-(player.x+player.vx),
+                         testCD.position.z-(player.z+player.vz)) + Math.PI/2
+          var n = [S(p), 0, C(p)]
+          var r = Coordinates.Reflect(a, n)
+          player.vx = r[0]
+          player.vz = r[2]
+          //if(!j) player.y = fl-playerHeight
+        }
+        
+        player.vy = 0
+        if(0 && player.y-player.oy < -16)
+          player.vy += Math.max(-35, (player.y-player.oy) * 80)
+      }
     }
     
-    player.oy = player.y
     player.y += player.vy += grav
     player.y = Math.min(fl - playerHeight, player.y)
-    if(player.hasTraction = player.y > fl-playerHeight-1){
-      player.vy = 0
-      if(player.y-player.oy < -16)
-        player.vy += Math.max(-35, (player.y-player.oy) * 80)
-      player.y = fl-playerHeight
-    }
+    
+    
     if(player.x >= G) {
       player.x = G
       player.vx *= -.2
@@ -892,6 +905,7 @@
           var ar = shape.shader.datasets[0].optionalAttributes[0].value
           sparks = sparks.filter((v, i) => v.life > 0)
           buckshot = buckshot.filter((v, i) => v.life > 0)
+          sensorPoints.forEach(v=>markers.push(v))
           for(var i = 0; i < shape.vertices.length; i += 3){
             var idx = i/3
             if(buckshot.length && idx < buckshot.length && idx < 3e3){
@@ -900,7 +914,7 @@
                  buckshot[idx].x < -G || 
                  buckshot[idx].z > G || 
                  buckshot[idx].z < -G || 
-                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position) < 2){
+                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position.y) < 2){
                 buckshot[idx].life = 0
                 SpawnSparks(buckshot[idx].x-buckshot[idx].vx,
                             buckshot[idx].y-buckshot[idx].vy,
@@ -939,10 +953,17 @@
               shape.vertices[i+0] = x
               shape.vertices[i+1] = y
               shape.vertices[i+2] = z
-              ar[idx*4+0] = 0
-              ar[idx*4+1] = 2
-              ar[idx*4+2] = 0
-              ar[idx*4+3] = 1
+              if(idx - 6e3 > markers.length - 7){ // actual floor point
+                ar[idx*4+0] = 2
+                ar[idx*4+1] = 0
+                ar[idx*4+2] = 2
+                ar[idx*4+3] = 1
+              }else{
+                ar[idx*4+0] = 0
+                ar[idx*4+1] = 2
+                ar[idx*4+2] = 0
+                ar[idx*4+3] = 1
+              }
             }else{
               shape.vertices[i+0] = 1e5
               shape.vertices[i+1] = 1e5
@@ -983,11 +1004,12 @@
     
     ctx.clearRect(0,0,w,h)
     var gunSway
-    var d = Math.hypot(player.vx, player.vy, player.vz)
-    if(player.y > fl-playerHeight-5 && d > .1){
+    var d = Math.hypot(player.vx, player.vz)
+    console.log(player.y, fl-playerHeight)
+    if(player.hasTraction && d > .05){
       gunSway = {
-        x: S(t*2) * 50,
-        y: 1+C(t*8) * 20 + 20
+        x: S(t*4) * 50,
+        y: 1+C(t*10) * 20 + 20
       }
     }else{
       gunSway = {
