@@ -584,7 +584,8 @@
   
   var markers = []
   const Floor = (x, z, pushMarkers = false) => {
-    var mind = 6e6, idx = -1, position = -6e6
+    var mind = 6e6, mind2 = 6e6, idx = -1, position = -6e6
+    var nearestWallNormal = [0, 1, 0]
     var normalVec = {x: 0, y: 0, z: 0}
     floorLookup.forEach((v, i) => {
       if((d=Math.hypot(v.cx-x, v.cz-z))<mind){
@@ -595,13 +596,29 @@
     mind = 6e6
     floorLookup[idx].polyCenters.forEach((v, i) => {
       if(pushMarkers) markers.push([v.x, v.y, v.z])
-      if((d=Math.hypot(v.x-x, v.z-z)) < mind){
+      d=Math.hypot(v.x-x, v.z-z)
+      if(d < mind){
         mind = d
         position = structuredClone(v)
-        normalVec = floorLookup[idx].normalVecs[i]
+        normalVec = [
+          floorLookup[idx].normalVecs[i].x,
+          floorLookup[idx].normalVecs[i].y,
+          floorLookup[idx].normalVecs[i].z,
+        ]
+      }
+      if(d < mind2 && 
+         Math.abs(Math.acos(floorLookup[idx].normalVecs[i].y) -
+                  Math.PI/2) < Math.PI/4){
+        mind2 = d
+        nearestWallNormal = [
+          floorLookup[idx].normalVecs[i].x,
+          floorLookup[idx].normalVecs[i].y,
+          floorLookup[idx].normalVecs[i].z,
+        ]
       }
     })
-    return {position, normalVec}
+    
+    return {position, normalVec, nearestWallNormal}
   }
   
   var players = []
@@ -851,17 +868,13 @@
 
       if(player.hasTraction){
         if(-fl-testCD.position.y < -playerHeight){
-          var a = [-player.vx, 0, -player.vz]
-          p = Math.atan2(testCD.position.x-(player.x+player.vx),
-                         testCD.position.z-(player.z+player.vz)) + Math.PI/2
-          var n = [S(p), 0, C(p)]
+          var a = [player.vx, 0, player.vz]
+          var n = testCD.nearestWallNormal
           var r = Coordinates.Reflect(a, n)
           player.vx = r[0]
           player.vz = r[2]
-          //if(!j) player.y = fl-playerHeight
         }
         
-        player.vy = 0
         if(0 && player.y-player.oy < -16)
           player.vy += Math.max(-35, (player.y-player.oy) * 80)
       }
@@ -908,17 +921,18 @@
           sensorPoints.forEach(v=>markers.push(v))
           for(var i = 0; i < shape.vertices.length; i += 3){
             var idx = i/3
+            
             if(buckshot.length && idx < buckshot.length && idx < 3e3){
-              var bfl
-              if(buckshot[idx].x > G || 
-                 buckshot[idx].x < -G || 
-                 buckshot[idx].z > G || 
-                 buckshot[idx].z < -G || 
-                buckshot[idx].y - (bfl = Floor((buckshot[idx].x + buckshot[idx].vx*1),(buckshot[idx].z + buckshot[idx].vz*1)).position.y) < 2){
+              x = buckshot[idx].x
+              y = buckshot[idx].y
+              z = buckshot[idx].z
+              var vx = buckshot[idx].vx
+              var vy = buckshot[idx].vy
+              var vz = buckshot[idx].vz
+              var bfl = -Floor(-x-vx, -z-vz).position.y
+              if(x > G || x < -G || z > G || z < -G || -y > bfl-10){
                 buckshot[idx].life = 0
-                SpawnSparks(buckshot[idx].x-buckshot[idx].vx,
-                            buckshot[idx].y-buckshot[idx].vy,
-                            buckshot[idx].z-buckshot[idx].vz)
+                SpawnSparks(x, y-vy/4, z)
               }else{
                 x = buckshot[idx].x += buckshot[idx].vx
                 y = buckshot[idx].y += buckshot[idx].vy
@@ -1005,7 +1019,6 @@
     ctx.clearRect(0,0,w,h)
     var gunSway
     var d = Math.hypot(player.vx, player.vz)
-    console.log(player.y, fl-playerHeight)
     if(player.hasTraction && d > .05){
       gunSway = {
         x: S(t*4) * 50,
