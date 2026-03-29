@@ -284,20 +284,19 @@
         camSel = 0
         shotSize = 20
         shotspeed  = 25
-        shotTimerInterval  = .2
+        shotTimerInterval  = 0
         shotgunSpread  = 2
         playerMdrag = 1.4
-        playerSpeed = 2
+        playerSpeed = 4
         grav = 2
-        playerHeight = 32
+        playerHeight = 40
         jumpHeight = playerHeight / 1.5
-        playerRadius = playerHeight / 1.5
+        playerRadius = playerHeight
         playbackSpeed = 1
-        refTexture, playbackSpeed
         resolution = 50
-        levelSize = 100
-        G = levelSize * 4.5
-        enclosureSize = G / 4
+        levelSize = 60
+        G = levelSize * 25
+        enclosureSize = G / 40
         enclosureSize = levelSize
         offsetX = 0
         offsetY = -100
@@ -329,7 +328,6 @@
         playerRadius = playerHeight / 1.5
         jumpHeight = playerHeight / 1.5
         playbackSpeed = 1
-        refTexture, playbackSpeed
         resolution = 16
         levelSize = 150
         G = levelSize * 4.5
@@ -375,7 +373,6 @@
         playerRadius = playerHeight / 1.5
         jumpHeight = playerHeight / 1.5
         playbackSpeed = 1
-        refTexture, playbackSpeed
         resolution = 50
         levelSize = 300
         G = levelSize * 4.5
@@ -416,7 +413,6 @@
         playerRadius = playerHeight / 1.5
         jumpHeight = playerHeight / 1.5
         playbackSpeed = 1
-        refTexture, playbackSpeed
         resolution = 50
         levelSize = 200
         G = levelSize * 4.5
@@ -451,7 +447,6 @@
         jumpHeight = playerHeight / 2
         playerRadius = playerHeight / 1.5
         playbackSpeed = 1
-        refTexture, playbackSpeed
         resolution = 40
         levelSize = 150
         G = levelSize * 4.5
@@ -486,7 +481,6 @@
         playerRadius = playerHeight / 1.5
         jumpHeight = playerHeight / 2
         playbackSpeed = 1
-        refTexture, playbackSpeed
         resolution = 50
         levelSize = 250
         G = levelSize * 4.5
@@ -512,17 +506,16 @@
         camSel = 0
         shotSize = 20
         shotspeed  = 25
-        shotTimerInterval  = .2
+        shotTimerInterval  = 0
         shotgunSpread  = 2
         playerMdrag = 1.4
-        playerSpeed = 2
-        grav = 2
-        playerHeight = 50
+        playerSpeed = 5
+        grav = 3
+        playerHeight = 80
         jumpHeight = playerHeight / 1.5
-        playerRadius = playerHeight / 1.5
+        playerRadius = playerHeight / 3
         playbackSpeed = 1
-        refTexture, playbackSpeed
-        resolution = 20
+        resolution = 50
         levelSize = 250
         G = levelSize * 4.5
         enclosureSize = G / 4.5
@@ -538,9 +531,9 @@
         ambientLight = .25
         backgroundLight = .8
         extras = []
-        refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/redwalk.jpg'
-        mainURL = 'https://srmcgann.github.io/objs2/spiral_platforms/floor.obj'
-        mainMap = 'https://srmcgann.github.io/objs2/spiral_platforms/texture.png'
+        refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/21.jpg'
+        mainURL = 'https://srmcgann.github.io/objs2/spiral_platform2/spiral_platform2.obj'
+        mainMap = 'https://srmcgann.github.io/objs2/spiral_platform2/texture.png'
       break
     }
 
@@ -756,7 +749,8 @@
     })
   }
    
-  var level = 6
+  var level = 2
+  
   await LoadLevel(level)
 
   var shaderOptions = [
@@ -842,7 +836,8 @@
     floorLookup[idx].polyCenters.forEach((v, i) => {
       if(pushMarkers) markers.push([v.x, v.y, v.z])
       d=Math.hypot(v.x-x, v.z-z)
-      if(Math.abs(y-v.y) < playerHeight*2 && d < mind){
+      //if(Math.abs(y-v.y) < playerHeight*2 && d < mind){
+      if(d < mind){
         mind = d
         position = structuredClone(v)
         normalVec = [
@@ -851,7 +846,8 @@
           floorLookup[idx].normalVecs[i].z,
         ]
       }
-      if(Math.abs(y-v.y) < playerHeight*2 && d < mind2 && 
+      //if(Math.abs(y-v.y) < playerHeight*2 && d < mind2 && 
+      if(d < mind2 && 
          Math.abs(Math.acos(floorLookup[idx].normalVecs[i].y) -
                   Math.PI/2) < Math.PI/4){
         mind2 = d
@@ -1088,7 +1084,7 @@
   
     player.oy = player.y
     fl = -Floor(-player.x-player.vx, -player.y-player.vy, -player.z-player.vz).position.y
-    player.hasTraction = player.y > fl-playerHeight-2
+    player.hasTraction = player.y > fl-playerHeight-5
     var vx = 0
     var vy = 0
     var vz = 0
@@ -1100,7 +1096,7 @@
       sensorPoints.push([-player.x-cx, testCD.position.y, -player.z-cz])
 
       if(player.hasTraction){
-        if(-fl-testCD.position.y < -playerHeight/2 && -fl-testCD.position.y > -playerHeight){
+        if(-fl-testCD.position.y < -playerHeight/2){// && -fl-testCD.position.y > -playerHeight){
           var a = [player.vx, 0, player.vz]
           var n = testCD.nearestWallNormal
           var r = Coordinates.Reflect(a, n)
