@@ -3,10 +3,9 @@
   ✔ base level optimization
   ✔ mute/unmute button
   ✔ wall-sliding, proper CD
-  * shotgun recoil
+  ✔ shotgun recoil
   * level picker / system
   * large levels, many levels
-    // finished: island, cathedral
   * powerups
     * shells, health, weapons/upgrades
   * online
@@ -749,7 +748,7 @@
     })
   }
    
-  var level = 6
+  var level = 0
   
   await LoadLevel(level)
 
@@ -1096,7 +1095,7 @@
       sensorPoints.push([-player.x-cx, testCD.position.y, -player.z-cz])
 
       if(player.hasTraction){
-        if(-fl-testCD.position.y < -playerHeight/2){// && -fl-testCD.position.y > -playerHeight){
+        if(-fl-testCD.position.y < -playerHeight*2){// && -fl-testCD.position.y > -playerHeight){
           var a = [player.vx, 0, player.vz]
           var n = testCD.nearestWallNormal
           var r = Coordinates.Reflect(a, n)
